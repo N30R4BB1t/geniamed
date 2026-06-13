@@ -26,6 +26,12 @@ Prontuario:
 http://localhost:3000/prontuario.html
 ```
 
+Area administrativa:
+
+```text
+http://localhost:3000/admin.html
+```
+
 ## Endpoints principais
 
 Login inicial:
@@ -37,6 +43,30 @@ Content-Type: application/json
 {
   "username": "Admin",
   "password": "Admin123"
+}
+```
+
+CRUD administrativo de unidades:
+
+```http
+GET /api/admin/units
+Authorization: Bearer TOKEN_DO_LOGIN
+```
+
+```http
+POST /api/admin/units
+Authorization: Bearer TOKEN_DO_LOGIN
+Content-Type: application/json
+
+{
+  "name": "Hospital Exemplo",
+  "address": "Rua Central, 100",
+  "city": "Sao Paulo",
+  "state": "SP",
+  "phone": "+55 11 3000-0000",
+  "latitude": -23.5505,
+  "longitude": -46.6333,
+  "active": true
 }
 ```
 
@@ -92,6 +122,7 @@ No Render, configure as variaveis:
 NODE_ENV=production
 DATABASE_URL=URL_DO_POSTGRES_DO_RENDER
 DB_SSL=true
+AUTH_SECRET=uma_chave_longa_e_segura
 PORT=3000
 ```
 

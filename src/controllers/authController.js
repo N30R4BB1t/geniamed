@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const db = require('../config/database');
+const tokenService = require('../services/tokenService');
 
 const loginSchema = z.object({
   username: z.string().min(1),
@@ -23,6 +24,12 @@ async function login(req, res, next) {
     }
 
     const user = result.rows[0];
+    const token = tokenService.sign({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      exp: Date.now() + 8 * 60 * 60 * 1000
+    });
 
     await db.query(
       `INSERT INTO audit_logs (actor, action, entity, entity_id, metadata)
@@ -30,11 +37,10 @@ async function login(req, res, next) {
       [user.username, user.id, JSON.stringify({ role: user.role })]
     );
 
-    res.json({ user });
+    res.json({ user, token });
   } catch (error) {
     next(error);
   }
 }
 
 module.exports = { login };
-
