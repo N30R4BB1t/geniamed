@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard de Ocorrencias</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <strong>Prontuario Eletronico</strong>
+      <span>Controle de pre-atendimento</span>
+    </div>
+    <nav>
+      <a class="active" href="/">Dashboard</a>
+      <a href="/prontuario.html">Prontuario</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="panel map-panel">
+      <div class="section-title">
+        <h1>Mapa operacional</h1>
+        <button id="refreshButton">Atualizar</button>
+      </div>
+      <div class="map-summary" id="mapSummary">Aguardando ocorrencias com localizacao.</div>
+      <div class="map" id="map"></div>
+    </section>
+
+    <section class="panel queue-panel">
+      <div class="section-title">
+        <h2>Fila ativa</h2>
+        <span id="countBadge" class="badge">0</span>
+      </div>
+      <div id="occurrences" class="occurrence-list"></div>
+    </section>
+  </main>
+
+  <dialog id="detailsDialog">
+    <div class="dialog-header">
+      <h2 id="dialogTitle">Ocorrencia</h2>
+      <button id="closeDialog">Fechar</button>
+    </div>
+    <div id="dialogBody"></div>
+  </dialog>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>
