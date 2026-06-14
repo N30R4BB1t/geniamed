@@ -6,36 +6,165 @@
   <title>Prontuario Eletronico</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
-  <header class="topbar">
-    <div>
-      <strong>Prontuario Eletronico</strong>
-      <span>Consulta do paciente</span>
-    </div>
-    <nav>
-      <a href="/">Dashboard</a>
-      <a class="active" href="/prontuario.html">Prontuario</a>
-      <a href="/admin.html">Admin</a>
-    </nav>
-  </header>
+<body class="record-app-body">
+  <div class="record-app">
+    <aside class="record-sidebar">
+      <div class="brand-lockup">
+        <div class="brand-mark">G</div>
+        <strong>GeniaMed</strong>
+      </div>
 
-  <main class="record-shell">
-    <section class="panel search-panel">
-      <h1>Buscar paciente</h1>
-      <form id="patientForm">
-        <label for="patientId">ID do paciente</label>
-        <div class="input-row">
-          <input id="patientId" name="patientId" placeholder="UUID do paciente" required>
-          <button>Buscar</button>
+      <nav class="record-nav">
+        <button class="active" data-view="overview">Dashboard</button>
+        <button data-view="patients">Pacientes</button>
+        <button data-view="triage">Triagens</button>
+        <button data-view="anamnesis">Anamneses</button>
+        <button data-view="consultations">Consultas</button>
+        <button data-view="prescriptions">Prescricoes</button>
+        <button data-view="timeline">Evolucoes <span>Em breve</span></button>
+        <button data-view="attachments">Anexos <span>Em breve</span></button>
+      </nav>
+
+      <div class="record-sidebar-footer">
+        <a href="/">Controle operacional</a>
+        <a href="/admin.html">Area admin</a>
+      </div>
+    </aside>
+
+    <section class="record-main">
+      <header class="record-topbar">
+        <div>
+          <strong id="viewTitle">Dashboard</strong>
+          <span>Ambulatorio geral adulto · demonstracao local</span>
         </div>
-      </form>
-      <p class="hint">Exemplo: 11111111-1111-1111-1111-111111111111</p>
-    </section>
+        <div class="doctor-chip">
+          <span>DR</span>
+          <div>
+            <strong>Dra. Estudante</strong>
+            <small>Perfil medico academico</small>
+          </div>
+        </div>
+      </header>
 
-    <section id="record" class="panel record-panel empty">
-      <h2>Nenhum paciente selecionado</h2>
+      <div class="academic-alert">
+        <strong>Ambiente academico:</strong> utilize exclusivamente dados ficticios. Nenhum documento possui validade clinica.
+        <span>Somente neste navegador</span>
+      </div>
+
+      <main class="record-content">
+        <section id="overviewView" class="record-view">
+          <div class="record-hero">
+            <div>
+              <h1>Visao geral</h1>
+              <p>Acompanhe o fluxo academico e acesse os registros recentes.</p>
+            </div>
+            <button id="newPatientButton">Novo paciente</button>
+          </div>
+
+          <div class="stat-grid">
+            <article class="stat-card"><span>Pacientes</span><strong id="patientsCount">0</strong><small>Pacientes cadastrados</small></article>
+            <article class="stat-card"><span>Triagens</span><strong id="triageCount">0</strong><small>Triagens hoje</small></article>
+            <article class="stat-card"><span>Consultas</span><strong id="consultCount">0</strong><small>Consultas hoje</small></article>
+            <article class="stat-card"><span>Ativos</span><strong id="activeCount">0</strong><small>Em andamento</small></article>
+          </div>
+
+          <div class="record-two-col">
+            <section class="record-card">
+              <div class="record-card-head">
+                <h2>Pacientes recentes</h2>
+                <span>Ultimos cadastros realizados</span>
+              </div>
+              <div id="recentPatients" class="clinical-list empty-state"></div>
+            </section>
+
+            <section class="record-card">
+              <div class="record-card-head">
+                <h2>Atividade recente</h2>
+                <span>Eventos registrados com autoria</span>
+              </div>
+              <div id="recentActivity" class="clinical-list empty-state"></div>
+            </section>
+          </div>
+
+          <section class="source-card">
+            <div>
+              <strong>Fontes clinicas locais</strong>
+              <p>Recortes academicos, sem recomendacao automatica.</p>
+            </div>
+            <div class="source-tags">
+              <span>CID-10<br><small>04/06/2026</small></span>
+              <span>DCB<br><small>04/06/2026</small></span>
+            </div>
+          </section>
+        </section>
+
+        <section id="patientsView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Pacientes</h1>
+              <p>Busque, selecione e consulte o prontuario resumido.</p>
+            </div>
+            <button id="newPatientButton2">Novo paciente</button>
+          </div>
+
+          <div class="patient-workspace">
+            <section class="record-card">
+              <form id="patientSearchForm" class="patient-search">
+                <input id="patientSearch" placeholder="Buscar por nome, CPF ou UUID">
+                <button>Buscar</button>
+              </form>
+              <div id="patientsList" class="clinical-list"></div>
+            </section>
+
+            <section id="patientRecord" class="record-card patient-record empty-state">
+              <div class="empty-icon">+</div>
+              <h2>Nenhum paciente selecionado</h2>
+              <p>Selecione um paciente para visualizar o resumo clinico.</p>
+            </section>
+          </div>
+        </section>
+
+        <section id="placeholderView" class="record-view hidden">
+          <section class="record-card placeholder-card">
+            <h1 id="placeholderTitle">Modulo</h1>
+            <p>Esta area esta reservada para a proxima etapa do prontuario eletronico.</p>
+          </section>
+        </section>
+      </main>
     </section>
-  </main>
+  </div>
+
+  <dialog id="newPatientDialog">
+    <div class="dialog-header">
+      <h2>Novo paciente</h2>
+      <button id="closePatientDialog" class="secondary" type="button">Fechar</button>
+    </div>
+    <form id="newPatientForm" class="patient-form">
+      <label>Nome completo <input name="fullName" required></label>
+      <label>CPF <input name="cpf" placeholder="000.000.000-00"></label>
+      <label>Nascimento <input name="birthDate" type="date" required></label>
+      <label>
+        Sexo
+        <select name="sex">
+          <option value="NI">Nao informado</option>
+          <option value="F">Feminino</option>
+          <option value="M">Masculino</option>
+          <option value="O">Outro</option>
+        </select>
+      </label>
+      <label>Telefone <input name="phone"></label>
+      <label>E-mail <input name="email" type="email"></label>
+      <label>Alergias <input name="allergies"></label>
+      <label>Condicoes cronicas <input name="chronicConditions"></label>
+      <label>Medicamentos em uso <input name="currentMedications"></label>
+      <label>Tipo sanguineo <input name="bloodType"></label>
+      <label class="patient-form-wide">Observacoes <input name="notes"></label>
+      <div class="form-actions patient-form-wide">
+        <button>Salvar paciente</button>
+        <button id="cancelPatientForm" class="secondary" type="button">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/prontuario.js"></script>
 </body>

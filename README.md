@@ -70,6 +70,30 @@ Content-Type: application/json
 }
 ```
 
+Cadastros administrativos disponiveis na tela `/admin.html`:
+
+- Unidades de atendimento: `units`
+- Capacidades de atendimento por unidade: `unit_capabilities`
+- Usuarios do sistema: `app_users`
+- Protocolos de triagem: `triage_protocols`
+
+As rotas administrativas ficam sob:
+
+```text
+/api/admin/units
+/api/admin/capabilities
+/api/admin/users
+/api/admin/protocols
+```
+
+Os protocolos alimentam o endpoint usado pelo app Android:
+
+```text
+GET /api/occurrences/types
+```
+
+Assim, novas categorias e subcategorias de triagem podem ser cadastradas sem alterar o codigo do app.
+
 ```http
 POST /api/auth/qrcode
 Content-Type: application/json

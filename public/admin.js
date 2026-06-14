@@ -2,20 +2,48 @@ const loginPanel = document.querySelector('#loginPanel');
 const adminPanel = document.querySelector('#adminPanel');
 const loginForm = document.querySelector('#loginForm');
 const loginMessage = document.querySelector('#loginMessage');
+const logoutButton = document.querySelector('#logoutButton');
+
+const menuUnits = document.querySelector('#menuUnits');
+const menuCapabilities = document.querySelector('#menuCapabilities');
+const menuUsers = document.querySelector('#menuUsers');
+const menuProtocols = document.querySelector('#menuProtocols');
+const unitsSection = document.querySelector('#unitsSection');
+const capabilitiesSection = document.querySelector('#capabilitiesSection');
+const usersSection = document.querySelector('#usersSection');
+const protocolsSection = document.querySelector('#protocolsSection');
+
 const unitForm = document.querySelector('#unitForm');
 const unitsTable = document.querySelector('#unitsTable');
 const newUnitButton = document.querySelector('#newUnitButton');
-const cancelEditButton = document.querySelector('#cancelEditButton');
-const logoutButton = document.querySelector('#logoutButton');
+const cancelUnitButton = document.querySelector('#cancelUnitButton');
+
+const capabilityForm = document.querySelector('#capabilityForm');
+const capabilitiesTable = document.querySelector('#capabilitiesTable');
+const newCapabilityButton = document.querySelector('#newCapabilityButton');
+const cancelCapabilityButton = document.querySelector('#cancelCapabilityButton');
+
+const userForm = document.querySelector('#userForm');
+const usersTable = document.querySelector('#usersTable');
+const newUserButton = document.querySelector('#newUserButton');
+const cancelUserButton = document.querySelector('#cancelUserButton');
+
+const protocolForm = document.querySelector('#protocolForm');
+const protocolsTable = document.querySelector('#protocolsTable');
+const newProtocolButton = document.querySelector('#newProtocolButton');
+const cancelProtocolButton = document.querySelector('#cancelProtocolButton');
 
 let units = [];
+let capabilities = [];
+let users = [];
+let protocols = [];
 let token = localStorage.getItem('adminToken');
 let adminUser = JSON.parse(localStorage.getItem('adminUser') || 'null');
 
 function boot() {
   if (token && adminUser) {
     showAdmin();
-    loadUnits();
+    loadAll();
   }
 }
 
@@ -44,34 +72,14 @@ loginForm.addEventListener('submit', async (event) => {
   localStorage.setItem('adminToken', token);
   localStorage.setItem('adminUser', JSON.stringify(adminUser));
   showAdmin();
-  await loadUnits();
+  await loadAll();
 });
 
-unitForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const data = formToUnit();
-  const id = unitForm.elements.id.value;
-  const method = id ? 'PUT' : 'POST';
-  const url = id ? `/api/admin/units/${id}` : '/api/admin/units';
+menuUnits.addEventListener('click', () => showSection('units'));
+menuCapabilities.addEventListener('click', () => showSection('capabilities'));
+menuUsers.addEventListener('click', () => showSection('users'));
+menuProtocols.addEventListener('click', () => showSection('protocols'));
 
-  const response = await fetch(url, {
-    method,
-    headers: authHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    alert(error.error || 'Nao foi possivel salvar a unidade.');
-    return;
-  }
-
-  resetForm();
-  await loadUnits();
-});
-
-newUnitButton.addEventListener('click', resetForm);
-cancelEditButton.addEventListener('click', resetForm);
 logoutButton.addEventListener('click', () => {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminUser');
@@ -81,20 +89,106 @@ logoutButton.addEventListener('click', () => {
   adminPanel.classList.add('hidden');
 });
 
-async function loadUnits() {
-  const response = await fetch('/api/admin/units', {
-    headers: authHeaders(false)
+unitForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = unitForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/units/${id}` : '/api/admin/units', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToUnit())
   });
+  if (!(await handleSaveResponse(response))) return;
+  resetUnitForm();
+  await loadUnits();
+  await loadCapabilities();
+});
 
-  if (response.status === 401) {
-    logoutButton.click();
-    loginMessage.textContent = 'Sessao expirada. Entre novamente.';
-    return;
-  }
+capabilityForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = capabilityForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/capabilities/${id}` : '/api/admin/capabilities', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToCapability())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetCapabilityForm();
+  await loadCapabilities();
+});
 
+userForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = userForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/users/${id}` : '/api/admin/users', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToUser())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetUserForm();
+  await loadUsers();
+});
+
+protocolForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = protocolForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/protocols/${id}` : '/api/admin/protocols', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToProtocol())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetProtocolForm();
+  await loadProtocols();
+});
+
+newUnitButton.addEventListener('click', resetUnitForm);
+cancelUnitButton.addEventListener('click', resetUnitForm);
+newCapabilityButton.addEventListener('click', resetCapabilityForm);
+cancelCapabilityButton.addEventListener('click', resetCapabilityForm);
+newUserButton.addEventListener('click', resetUserForm);
+cancelUserButton.addEventListener('click', resetUserForm);
+newProtocolButton.addEventListener('click', resetProtocolForm);
+cancelProtocolButton.addEventListener('click', resetProtocolForm);
+
+async function loadAll() {
+  await loadUnits();
+  await loadCapabilities();
+  await loadUsers();
+  await loadProtocols();
+}
+
+async function loadUnits() {
+  const response = await fetch('/api/admin/units', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
   const data = await response.json();
   units = data.units || [];
   renderUnits();
+  renderUnitSelect();
+}
+
+async function loadCapabilities() {
+  const response = await fetch('/api/admin/capabilities', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  capabilities = data.capabilities || [];
+  renderCapabilities();
+}
+
+async function loadUsers() {
+  const response = await fetch('/api/admin/users', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  users = data.users || [];
+  renderUsers();
+}
+
+async function loadProtocols() {
+  const response = await fetch('/api/admin/protocols', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  protocols = data.protocols || [];
+  renderProtocols();
 }
 
 function renderUnits() {
@@ -105,26 +199,92 @@ function renderUnits() {
 
   unitsTable.innerHTML = units.map((unit) => `
     <tr>
-      <td>
-        <strong>${escapeHtml(unit.name)}</strong>
-        <div class="meta">${escapeHtml(unit.address)}</div>
-      </td>
+      <td><strong>${escapeHtml(unit.name)}</strong><div class="meta">${escapeHtml(unit.address)}</div></td>
       <td>${escapeHtml(unit.city)} / ${escapeHtml(unit.state)}</td>
       <td>${Number(unit.latitude).toFixed(5)}, ${Number(unit.longitude).toFixed(5)}</td>
       <td><span class="badge">${unit.active ? 'Ativa' : 'Inativa'}</span></td>
       <td class="table-actions">
         <button class="secondary" type="button" onclick="editUnit('${unit.id}')">Editar</button>
         <button class="secondary" type="button" onclick="toggleUnit('${unit.id}')">${unit.active ? 'Desativar' : 'Ativar'}</button>
-        <button type="button" onclick="deleteUnit('${unit.id}')">Excluir</button>
+        <button type="button" onclick="deleteRecord('/api/admin/units/${unit.id}', loadUnits)">Excluir</button>
       </td>
     </tr>
   `).join('');
 }
 
+function renderCapabilities() {
+  if (capabilities.length === 0) {
+    capabilitiesTable.innerHTML = '<tr><td colspan="5">Nenhuma capacidade cadastrada.</td></tr>';
+    return;
+  }
+
+  capabilitiesTable.innerHTML = capabilities.map((item) => `
+    <tr>
+      <td>${escapeHtml(item.unit_name)}</td>
+      <td>${escapeHtml(item.need)}</td>
+      <td>${escapeHtml(item.category || '-')} / ${escapeHtml(item.subcategory || '-')}</td>
+      <td><span class="badge">${escapeHtml(item.min_priority)}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editCapability('${item.id}')">Editar</button>
+        <button type="button" onclick="deleteRecord('/api/admin/capabilities/${item.id}', loadCapabilities)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderUsers() {
+  if (users.length === 0) {
+    usersTable.innerHTML = '<tr><td colspan="5">Nenhum usuario cadastrado.</td></tr>';
+    return;
+  }
+
+  usersTable.innerHTML = users.map((user) => `
+    <tr>
+      <td><strong>${escapeHtml(user.username)}</strong></td>
+      <td>${escapeHtml(user.full_name)}</td>
+      <td>${escapeHtml(user.role)}</td>
+      <td><span class="badge">${user.active ? 'Ativo' : 'Inativo'}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editUser('${user.id}')">Editar</button>
+        <button class="secondary" type="button" onclick="toggleUser('${user.id}')">${user.active ? 'Desativar' : 'Ativar'}</button>
+        <button type="button" onclick="deleteRecord('/api/admin/users/${user.id}', loadUsers)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderProtocols() {
+  if (protocols.length === 0) {
+    protocolsTable.innerHTML = '<tr><td colspan="6">Nenhum protocolo cadastrado.</td></tr>';
+    return;
+  }
+
+  protocolsTable.innerHTML = protocols.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(item.need_label)}</strong><div class="meta">${escapeHtml(item.need)}</div></td>
+      <td>${escapeHtml(item.category_label || '-')}<div class="meta">${escapeHtml(item.category_code || '')}</div></td>
+      <td>${escapeHtml(item.subcategory_label || '-')}<div class="meta">${escapeHtml(item.subcategory_code || '')}</div></td>
+      <td><span class="badge">${escapeHtml(item.priority)}</span></td>
+      <td><span class="badge">${item.active ? 'Ativo' : 'Inativo'}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editProtocol('${item.id}')">Editar</button>
+        <button class="secondary" type="button" onclick="toggleProtocol('${item.id}')">${item.active ? 'Desativar' : 'Ativar'}</button>
+        <button type="button" onclick="deleteRecord('/api/admin/protocols/${item.id}', loadProtocols)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderUnitSelect() {
+  const select = capabilityForm.elements.unitId;
+  select.innerHTML = units
+    .map((unit) => `<option value="${unit.id}">${escapeHtml(unit.name)}</option>`)
+    .join('');
+}
+
 function editUnit(id) {
   const unit = units.find((item) => item.id === id);
   if (!unit) return;
-
   unitForm.elements.id.value = unit.id;
   unitForm.elements.name.value = unit.name;
   unitForm.elements.address.value = unit.address;
@@ -136,49 +296,100 @@ function editUnit(id) {
   unitForm.elements.active.checked = unit.active;
 }
 
+function editCapability(id) {
+  const item = capabilities.find((capability) => capability.id === id);
+  if (!item) return;
+  capabilityForm.elements.id.value = item.id;
+  capabilityForm.elements.unitId.value = item.unit_id;
+  capabilityForm.elements.need.value = item.need;
+  capabilityForm.elements.category.value = item.category || '';
+  capabilityForm.elements.subcategory.value = item.subcategory || '';
+  capabilityForm.elements.minPriority.value = item.min_priority;
+  capabilityForm.elements.notes.value = item.notes || '';
+}
+
+function editUser(id) {
+  const user = users.find((item) => item.id === id);
+  if (!user) return;
+  userForm.elements.id.value = user.id;
+  userForm.elements.username.value = user.username;
+  userForm.elements.fullName.value = user.full_name;
+  userForm.elements.role.value = user.role;
+  userForm.elements.password.value = '';
+  userForm.elements.password.placeholder = 'Deixe em branco para manter';
+  userForm.elements.active.checked = user.active;
+}
+
+function editProtocol(id) {
+  const item = protocols.find((protocol) => protocol.id === id);
+  if (!item) return;
+  protocolForm.elements.id.value = item.id;
+  protocolForm.elements.need.value = item.need;
+  protocolForm.elements.needLabel.value = item.need_label;
+  protocolForm.elements.categoryCode.value = item.category_code || '';
+  protocolForm.elements.categoryLabel.value = item.category_label || '';
+  protocolForm.elements.subcategoryCode.value = item.subcategory_code || '';
+  protocolForm.elements.subcategoryLabel.value = item.subcategory_label || '';
+  protocolForm.elements.priority.value = item.priority;
+  protocolForm.elements.sortOrder.value = item.sort_order || 0;
+  protocolForm.elements.instructions.value = item.instructions || '';
+  protocolForm.elements.active.checked = item.active;
+}
+
 async function toggleUnit(id) {
   const unit = units.find((item) => item.id === id);
   if (!unit) return;
-
   const response = await fetch(`/api/admin/units/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
-    body: JSON.stringify({
-      name: unit.name,
-      address: unit.address,
-      city: unit.city,
-      state: unit.state,
-      phone: unit.phone,
-      latitude: Number(unit.latitude),
-      longitude: Number(unit.longitude),
-      active: !unit.active
-    })
+    body: JSON.stringify({ ...unit, latitude: Number(unit.latitude), longitude: Number(unit.longitude), active: !unit.active })
   });
-
-  if (!response.ok) {
-    const error = await response.json();
-    alert(error.error || 'Nao foi possivel alterar o status.');
-    return;
-  }
-
-  await loadUnits();
+  if (await handleSaveResponse(response)) await loadUnits();
 }
 
-async function deleteUnit(id) {
-  if (!confirm('Deseja excluir esta unidade? Se houver vinculos, use Desativar.')) return;
-
-  const response = await fetch(`/api/admin/units/${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(false)
+async function toggleUser(id) {
+  const user = users.find((item) => item.id === id);
+  if (!user) return;
+  const response = await fetch(`/api/admin/users/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      username: user.username,
+      fullName: user.full_name,
+      role: user.role,
+      active: !user.active
+    })
   });
+  if (await handleSaveResponse(response)) await loadUsers();
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    alert(error.error || 'Nao foi possivel excluir.');
-    return;
-  }
+async function toggleProtocol(id) {
+  const item = protocols.find((protocol) => protocol.id === id);
+  if (!item) return;
+  const response = await fetch(`/api/admin/protocols/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      need: item.need,
+      needLabel: item.need_label,
+      categoryCode: item.category_code,
+      categoryLabel: item.category_label,
+      subcategoryCode: item.subcategory_code,
+      subcategoryLabel: item.subcategory_label,
+      priority: item.priority,
+      instructions: item.instructions,
+      sortOrder: item.sort_order,
+      active: !item.active
+    })
+  });
+  if (await handleSaveResponse(response)) await loadProtocols();
+}
 
-  await loadUnits();
+async function deleteRecord(url, reload) {
+  if (!confirm('Deseja excluir este registro?')) return;
+  const response = await fetch(url, { method: 'DELETE', headers: authHeaders(false) });
+  if (!(await handleSaveResponse(response))) return;
+  await reload();
 }
 
 function formToUnit() {
@@ -194,21 +405,123 @@ function formToUnit() {
   };
 }
 
-function resetForm() {
+function formToCapability() {
+  return {
+    unitId: capabilityForm.elements.unitId.value,
+    need: capabilityForm.elements.need.value,
+    category: capabilityForm.elements.category.value.trim() || null,
+    subcategory: capabilityForm.elements.subcategory.value.trim() || null,
+    minPriority: capabilityForm.elements.minPriority.value,
+    notes: capabilityForm.elements.notes.value.trim() || null
+  };
+}
+
+function formToUser() {
+  const payload = {
+    username: userForm.elements.username.value.trim(),
+    fullName: userForm.elements.fullName.value.trim(),
+    role: userForm.elements.role.value,
+    active: userForm.elements.active.checked
+  };
+
+  const password = userForm.elements.password.value;
+  if (password) payload.password = password;
+  return payload;
+}
+
+function formToProtocol() {
+  return {
+    need: protocolForm.elements.need.value,
+    needLabel: protocolForm.elements.needLabel.value.trim(),
+    categoryCode: protocolForm.elements.categoryCode.value.trim() || null,
+    categoryLabel: protocolForm.elements.categoryLabel.value.trim() || null,
+    subcategoryCode: protocolForm.elements.subcategoryCode.value.trim() || null,
+    subcategoryLabel: protocolForm.elements.subcategoryLabel.value.trim() || null,
+    priority: protocolForm.elements.priority.value,
+    instructions: protocolForm.elements.instructions.value.trim() || null,
+    sortOrder: Number(protocolForm.elements.sortOrder.value || 0),
+    active: protocolForm.elements.active.checked
+  };
+}
+
+function resetUnitForm() {
   unitForm.reset();
   unitForm.elements.id.value = '';
   unitForm.elements.active.checked = true;
 }
 
+function resetCapabilityForm() {
+  capabilityForm.reset();
+  capabilityForm.elements.id.value = '';
+  renderUnitSelect();
+}
+
+function resetUserForm() {
+  userForm.reset();
+  userForm.elements.id.value = '';
+  userForm.elements.password.placeholder = 'Obrigatoria no cadastro';
+  userForm.elements.active.checked = true;
+}
+
+function resetProtocolForm() {
+  protocolForm.reset();
+  protocolForm.elements.id.value = '';
+  protocolForm.elements.needLabel.value = 'Emergencia';
+  protocolForm.elements.sortOrder.value = '0';
+  protocolForm.elements.active.checked = true;
+}
+
+function showSection(section) {
+  const sections = {
+    units: unitsSection,
+    capabilities: capabilitiesSection,
+    users: usersSection,
+    protocols: protocolsSection
+  };
+  const menus = {
+    units: menuUnits,
+    capabilities: menuCapabilities,
+    users: menuUsers,
+    protocols: menuProtocols
+  };
+
+  Object.entries(sections).forEach(([key, element]) => {
+    element.classList.toggle('hidden', key !== section);
+  });
+
+  Object.entries(menus).forEach(([key, element]) => {
+    element.classList.toggle('active-menu', key === section);
+    element.classList.toggle('secondary', key !== section);
+  });
+}
+
 function showAdmin() {
   loginPanel.classList.add('hidden');
   adminPanel.classList.remove('hidden');
+  showSection('units');
+}
+
+async function handleSaveResponse(response) {
+  if (response.ok) return true;
+  if (response.status === 401) {
+    logoutButton.click();
+    loginMessage.textContent = 'Sessao expirada. Entre novamente.';
+    return false;
+  }
+  const error = await response.json().catch(() => ({ error: 'Operacao nao concluida.' }));
+  alert(error.error || 'Operacao nao concluida.');
+  return false;
+}
+
+async function ensureAuthorized(response) {
+  if (response.status !== 401) return true;
+  logoutButton.click();
+  loginMessage.textContent = 'Sessao expirada. Entre novamente.';
+  return false;
 }
 
 function authHeaders(withJson = true) {
-  const headers = {
-    Authorization: `Bearer ${token}`
-  };
+  const headers = { Authorization: `Bearer ${token}` };
   if (withJson) headers['Content-Type'] = 'application/json';
   return headers;
 }
@@ -223,4 +536,3 @@ function escapeHtml(value) {
 }
 
 boot();
-

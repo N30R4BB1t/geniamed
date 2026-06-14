@@ -1,7 +1,7 @@
 const { z } = require('zod');
 const db = require('../config/database');
 const alertHub = require('../services/alertHub');
-const { occurrenceTypes, inferPriority } = require('../services/triageService');
+const { getOccurrenceTypes, inferPriority } = require('../services/triageService');
 
 const createSchema = z.object({
   patientId: z.string().uuid(),
@@ -18,14 +18,19 @@ const statusSchema = z.object({
   status: z.enum(['ABERTA', 'ALERTA_ENVIADO', 'EM_PREPARO', 'AGUARDANDO', 'EM_ATENDIMENTO', 'FINALIZADA', 'CANCELADA'])
 });
 
-function getTypes(req, res) {
-  res.json({ types: occurrenceTypes });
+async function getTypes(req, res, next) {
+  try {
+    const types = await getOccurrenceTypes();
+    res.json({ types });
+  } catch (error) {
+    next(error);
+  }
 }
 
 async function createOccurrence(req, res, next) {
   try {
     const input = createSchema.parse(req.body);
-    const priority = inferPriority(input.need, input.category, input.subcategory);
+    const priority = await inferPriority(input.need, input.category, input.subcategory);
 
     const result = await db.transaction(async (client) => {
       const occurrence = await client.query(
@@ -96,4 +101,3 @@ async function updateStatus(req, res, next) {
 }
 
 module.exports = { getTypes, createOccurrence, updateStatus };
-

@@ -39,14 +39,14 @@
     <section id="adminPanel" class="admin-grid hidden">
       <aside class="panel admin-menu">
         <h2>Cadastros</h2>
-        <button class="active-menu" type="button">Unidades</button>
-        <button class="secondary" type="button" disabled>Capacidades</button>
-        <button class="secondary" type="button" disabled>Usuarios</button>
-        <button class="secondary" type="button" disabled>Protocolos</button>
+        <button id="menuUnits" type="button">Unidades</button>
+        <button id="menuCapabilities" class="secondary" type="button">Capacidades</button>
+        <button id="menuUsers" class="secondary" type="button">Usuarios</button>
+        <button id="menuProtocols" class="secondary" type="button">Protocolos</button>
         <button id="logoutButton" class="secondary" type="button">Sair</button>
       </aside>
 
-      <section class="panel">
+      <section id="unitsSection" class="panel admin-section">
         <div class="section-title">
           <div>
             <h1>Unidades de atendimento</h1>
@@ -57,50 +57,17 @@
 
         <form id="unitForm" class="unit-form">
           <input type="hidden" name="id">
-
-          <label>
-            Nome
-            <input name="name" required>
-          </label>
-
-          <label>
-            Endereco
-            <input name="address" required>
-          </label>
-
-          <label>
-            Cidade
-            <input name="city" required>
-          </label>
-
-          <label>
-            UF
-            <input name="state" maxlength="2" required>
-          </label>
-
-          <label>
-            Telefone
-            <input name="phone">
-          </label>
-
-          <label>
-            Latitude
-            <input name="latitude" type="number" step="0.0000001" required>
-          </label>
-
-          <label>
-            Longitude
-            <input name="longitude" type="number" step="0.0000001" required>
-          </label>
-
-          <label class="check-row">
-            <input name="active" type="checkbox" checked>
-            Unidade ativa
-          </label>
-
+          <label>Nome <input name="name" required></label>
+          <label>Endereco <input name="address" required></label>
+          <label>Cidade <input name="city" required></label>
+          <label>UF <input name="state" maxlength="2" required></label>
+          <label>Telefone <input name="phone"></label>
+          <label>Latitude <input name="latitude" type="number" step="0.0000001" required></label>
+          <label>Longitude <input name="longitude" type="number" step="0.0000001" required></label>
+          <label class="check-row"><input name="active" type="checkbox" checked> Unidade ativa</label>
           <div class="form-actions">
             <button>Salvar unidade</button>
-            <button id="cancelEditButton" class="secondary" type="button">Cancelar</button>
+            <button id="cancelUnitButton" class="secondary" type="button">Cancelar</button>
           </div>
         </form>
 
@@ -119,10 +86,177 @@
           </table>
         </div>
       </section>
+
+      <section id="capabilitiesSection" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Capacidades de atendimento</h1>
+            <p class="hint">Defina quais demandas cada unidade consegue atender.</p>
+          </div>
+          <button id="newCapabilityButton" type="button">Nova capacidade</button>
+        </div>
+
+        <form id="capabilityForm" class="unit-form">
+          <input type="hidden" name="id">
+          <label>
+            Unidade
+            <select name="unitId" required></select>
+          </label>
+          <label>
+            Necessidade
+            <select name="need" required>
+              <option value="EMERGENCIA">Emergencia</option>
+              <option value="CONSULTA">Consulta</option>
+              <option value="AGENDAMENTO">Agendamento</option>
+              <option value="RETORNO">Retorno</option>
+              <option value="EXAME">Exame</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </label>
+          <label>Categoria <input name="category" placeholder="DOR, TRAUMA..."></label>
+          <label>Subcategoria <input name="subcategory" placeholder="DOR_NO_PEITO..."></label>
+          <label>
+            Prioridade minima
+            <select name="minPriority" required>
+              <option value="BAIXA">Baixa</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
+              <option value="CRITICA">Critica</option>
+            </select>
+          </label>
+          <label>Observacoes <input name="notes"></label>
+          <div class="form-actions">
+            <button>Salvar capacidade</button>
+            <button id="cancelCapabilityButton" class="secondary" type="button">Cancelar</button>
+          </div>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Unidade</th>
+                <th>Necessidade</th>
+                <th>Categoria</th>
+                <th>Prioridade</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="capabilitiesTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="usersSection" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Usuarios do sistema</h1>
+            <p class="hint">Gerencie acessos administrativos e operacionais.</p>
+          </div>
+          <button id="newUserButton" type="button">Novo usuario</button>
+        </div>
+
+        <form id="userForm" class="unit-form">
+          <input type="hidden" name="id">
+          <label>Login <input name="username" required></label>
+          <label>Nome completo <input name="fullName" required></label>
+          <label>
+            Perfil
+            <select name="role" required>
+              <option value="ADMIN">Admin</option>
+              <option value="RECEPCAO">Recepcao</option>
+              <option value="ENFERMAGEM">Enfermagem</option>
+              <option value="MEDICO">Medico</option>
+            </select>
+          </label>
+          <label>Senha <input name="password" type="password" placeholder="Obrigatoria no cadastro"></label>
+          <label class="check-row"><input name="active" type="checkbox" checked> Usuario ativo</label>
+          <div class="form-actions">
+            <button>Salvar usuario</button>
+            <button id="cancelUserButton" class="secondary" type="button">Cancelar</button>
+          </div>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Login</th>
+                <th>Nome</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="protocolsSection" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Protocolos de triagem</h1>
+            <p class="hint">Configure as perguntas e prioridades exibidas no app do paciente.</p>
+          </div>
+          <button id="newProtocolButton" type="button">Novo protocolo</button>
+        </div>
+
+        <form id="protocolForm" class="unit-form">
+          <input type="hidden" name="id">
+          <label>
+            Necessidade
+            <select name="need" required>
+              <option value="EMERGENCIA">Emergencia</option>
+              <option value="CONSULTA">Consulta</option>
+              <option value="AGENDAMENTO">Agendamento</option>
+              <option value="RETORNO">Retorno</option>
+              <option value="EXAME">Exame</option>
+              <option value="OUTRO">Outro</option>
+            </select>
+          </label>
+          <label>Rotulo da necessidade <input name="needLabel" required></label>
+          <label>Codigo categoria <input name="categoryCode" placeholder="DOR"></label>
+          <label>Rotulo categoria <input name="categoryLabel" placeholder="Dor"></label>
+          <label>Codigo subcategoria <input name="subcategoryCode" placeholder="DOR_NO_PEITO"></label>
+          <label>Rotulo subcategoria <input name="subcategoryLabel" placeholder="Dor no peito"></label>
+          <label>
+            Prioridade
+            <select name="priority" required>
+              <option value="BAIXA">Baixa</option>
+              <option value="MEDIA">Media</option>
+              <option value="ALTA">Alta</option>
+              <option value="CRITICA">Critica</option>
+            </select>
+          </label>
+          <label>Ordem <input name="sortOrder" type="number" value="0"></label>
+          <label>Orientacao <input name="instructions"></label>
+          <label class="check-row"><input name="active" type="checkbox" checked> Protocolo ativo</label>
+          <div class="form-actions">
+            <button>Salvar protocolo</button>
+            <button id="cancelProtocolButton" class="secondary" type="button">Cancelar</button>
+          </div>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Necessidade</th>
+                <th>Categoria</th>
+                <th>Subcategoria</th>
+                <th>Prioridade</th>
+                <th>Status</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="protocolsTable"></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </main>
 
   <script src="/admin.js"></script>
 </body>
 </html>
-
