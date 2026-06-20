@@ -4,6 +4,7 @@ const unitController = require('../controllers/adminUnitController');
 const capabilityController = require('../controllers/adminCapabilityController');
 const userController = require('../controllers/adminUserController');
 const protocolController = require('../controllers/adminProtocolController');
+const trackingController = require('../controllers/adminTrackingController');
 
 router.use(adminAuth);
 
@@ -27,5 +28,9 @@ router.get('/protocols', protocolController.list);
 router.post('/protocols', protocolController.create);
 router.put('/protocols/:id', protocolController.update);
 router.delete('/protocols/:id', protocolController.remove);
+
+router.get('/tracking/active', trackingController.listActive);
+router.post('/tracking/:id/location', trackingController.simulateLocation);
+router.post('/tracking/:id/reset', trackingController.resetSimulation);
 
 module.exports = router;

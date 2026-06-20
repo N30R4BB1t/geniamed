@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin - Prontuario Eletronico</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -43,6 +44,7 @@
         <button id="menuCapabilities" class="secondary" type="button">Capacidades</button>
         <button id="menuUsers" class="secondary" type="button">Usuarios</button>
         <button id="menuProtocols" class="secondary" type="button">Protocolos</button>
+        <button id="menuTracking" class="secondary" type="button">Simular trajeto</button>
         <button id="logoutButton" class="secondary" type="button">Sair</button>
       </aside>
 
@@ -254,9 +256,48 @@
           </table>
         </div>
       </section>
+
+      <section id="trackingSection" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Simulador de trajeto</h1>
+            <p class="hint">Movimente um paciente ativo e teste ETA, proximidade e redirecionamento.</p>
+          </div>
+          <button id="reloadTrackingButton" type="button">Atualizar ocorrencias</button>
+        </div>
+
+        <div class="tracking-simulator-grid">
+          <form id="trackingForm" class="form-grid">
+            <label>
+              Ocorrencia ativa
+              <select name="occurrenceId" required></select>
+            </label>
+            <label>
+              Progresso ate a unidade
+              <input name="progress" type="range" min="0" max="100" value="0">
+            </label>
+            <div class="simulator-coordinates">
+              <label>Latitude <input name="latitude" type="number" step="0.0000001" required></label>
+              <label>Longitude <input name="longitude" type="number" step="0.0000001" required></label>
+            </div>
+            <label>
+              Velocidade simulada (km/h)
+              <input name="speedKmh" type="number" min="0" value="28">
+            </label>
+            <div class="form-actions">
+              <button type="submit">Enviar posicao</button>
+              <button id="sendNearUnitButton" class="secondary" type="button">Simular 2 min</button>
+              <button id="resetSimulationButton" class="secondary" type="button">Reiniciar alertas</button>
+            </div>
+            <p id="trackingResult" class="hint"></p>
+          </form>
+          <div id="trackingMap" class="tracking-map"></div>
+        </div>
+      </section>
     </section>
   </main>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/admin.js"></script>
 </body>
 </html>

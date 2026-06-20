@@ -94,6 +94,81 @@ GET /api/occurrences/types
 
 Assim, novas categorias e subcategorias de triagem podem ser cadastradas sem alterar o codigo do app.
 
+## Registros clinicos do prontuario
+
+Os modulos do prontuario persistem no PostgreSQL:
+
+```text
+clinical_triages
+clinical_anamneses
+clinical_consultations
+clinical_prescriptions
+clinical_prescription_items
+clinical_evolutions
+clinical_attachments
+```
+
+Endpoints:
+
+```text
+GET/POST /api/clinical/triages
+GET/POST /api/clinical/anamneses
+GET/POST /api/clinical/consultations
+GET/POST /api/clinical/prescriptions
+GET/POST /api/clinical/evolutions
+GET/POST /api/clinical/attachments
+```
+
+## Fluxo operacional de ocorrencias
+
+O dashboard aplica transicoes controladas:
+
+```text
+ALERTA_ENVIADO
+EM_PREPARO
+AGUARDANDO
+EM_ATENDIMENTO
+FINALIZADA
+```
+
+Cada mudanca registra horario, ator, auditoria e historico em `occurrence_status_history`.
+Ao iniciar `EM_ATENDIMENTO`, uma consulta clinica e criada automaticamente e vinculada pela coluna `clinical_consultations.occurrence_id`.
+
+## Rastreamento do paciente
+
+Durante uma ocorrencia ativa, o app Android envia a localizacao aproximadamente a cada 30 segundos:
+
+```text
+POST /api/occurrences/:id/location
+POST /api/occurrences/:id/unit-suggestions/:suggestionId/respond
+```
+
+O backend registra o historico em `occurrence_location_history`, calcula distancia/ETA, emite alerta de proximidade e pode sugerir uma unidade compativel mais proxima. A troca exige confirmacao do paciente e e registrada em auditoria.
+
+### Simulador administrativo
+
+Na area `/admin.html`, acesse `Simular trajeto`:
+
+1. Selecione uma ocorrencia ativa.
+2. Arraste o controle de progresso, clique no mapa ou informe latitude/longitude.
+3. Clique em `Enviar posicao`.
+4. Use `Simular 2 min` para testar o alerta de proximidade.
+5. Use `Reiniciar alertas` para repetir os testes.
+
+O simulador usa os mesmos endpoints, calculos e eventos SSE do app Android.
+
+### Avisos por voz
+
+No Dashboard operacional, clique em `Ativar voz` a cada abertura da pagina. O navegador usa `SpeechSynthesis` em portugues para anunciar:
+
+- Inicio de uma nova ocorrencia, paciente, problema e unidade.
+- Atualizacoes relevantes de ETA.
+- Proximidade de aproximadamente dois minutos.
+- Chegada do paciente.
+- Sugestao de redirecionamento.
+
+O clique e necessario por causa das politicas de reproducao automatica dos navegadores.
+
 ```http
 POST /api/auth/qrcode
 Content-Type: application/json

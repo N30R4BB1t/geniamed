@@ -44,6 +44,8 @@ async function updateLocation(req, res, next) {
     );
     const etaMinutes = estimateEta(distance, input.speedMps);
     const shouldAlertProximity = etaMinutes <= 2 && !occurrence.proximity_alert_sent_at;
+    const shouldAlertArrival = distance <= 0.15 && !occurrence.arrival_alert_sent_at;
+    const shouldAlertEta = shouldEmitEtaAlert(occurrence.last_eta_alert_minutes, etaMinutes);
 
     await db.transaction(async (client) => {
       await client.query(
@@ -73,9 +75,25 @@ async function updateLocation(req, res, next) {
                   WHEN $5 <= 2 AND proximity_alert_sent_at IS NULL THEN now()
                   ELSE proximity_alert_sent_at
                 END,
+                arrival_alert_sent_at = CASE
+                  WHEN $4 <= 0.15 AND arrival_alert_sent_at IS NULL THEN now()
+                  ELSE arrival_alert_sent_at
+                END,
+                last_eta_alert_minutes = CASE
+                  WHEN $7 = TRUE THEN $5
+                  ELSE last_eta_alert_minutes
+                END,
                 updated_at = now()
           WHERE id = $6`,
-        [input.latitude, input.longitude, input.speedMps || null, distance.toFixed(2), etaMinutes, occurrence.id]
+        [
+          input.latitude,
+          input.longitude,
+          input.speedMps || null,
+          distance.toFixed(2),
+          etaMinutes,
+          occurrence.id,
+          shouldAlertEta
+        ]
       );
     });
 
@@ -95,11 +113,15 @@ async function updateLocation(req, res, next) {
       etaMinutes,
       unitName: occurrence.unit_name,
       proximityAlert: etaMinutes <= 2,
+      arrived: distance <= 0.15,
+      problem: formatProblem(occurrence),
       suggestion
     };
 
     alertHub.publish('patient-location-updated', payload);
+    if (shouldAlertEta) alertHub.publish('patient-eta-alert', payload);
     if (shouldAlertProximity) alertHub.publish('patient-proximity-alert', payload);
+    if (shouldAlertArrival) alertHub.publish('patient-arrival-alert', payload);
     if (suggestion) alertHub.publish('unit-change-suggested', payload);
 
     res.json(payload);
@@ -260,6 +282,18 @@ function normalizeSuggestion(row) {
 function estimateEta(distance, speedMps) {
   const speedKmH = speedMps && speedMps > 1 ? speedMps * 3.6 : 28;
   return Math.max(1, Math.round((distance / speedKmH) * 60));
+}
+
+function shouldEmitEtaAlert(previousEta, currentEta) {
+  if (previousEta === null || previousEta === undefined) return true;
+  if ([15, 10, 5, 2].includes(currentEta) && currentEta !== previousEta) return true;
+  return Math.abs(Number(previousEta) - currentEta) >= 5;
+}
+
+function formatProblem(occurrence) {
+  return [occurrence.category, occurrence.subcategory, occurrence.details]
+    .filter(Boolean)
+    .join(' - ');
 }
 
 module.exports = { updateLocation, respondSuggestion };

@@ -8,10 +8,12 @@ const menuUnits = document.querySelector('#menuUnits');
 const menuCapabilities = document.querySelector('#menuCapabilities');
 const menuUsers = document.querySelector('#menuUsers');
 const menuProtocols = document.querySelector('#menuProtocols');
+const menuTracking = document.querySelector('#menuTracking');
 const unitsSection = document.querySelector('#unitsSection');
 const capabilitiesSection = document.querySelector('#capabilitiesSection');
 const usersSection = document.querySelector('#usersSection');
 const protocolsSection = document.querySelector('#protocolsSection');
+const trackingSection = document.querySelector('#trackingSection');
 
 const unitForm = document.querySelector('#unitForm');
 const unitsTable = document.querySelector('#unitsTable');
@@ -32,11 +34,21 @@ const protocolForm = document.querySelector('#protocolForm');
 const protocolsTable = document.querySelector('#protocolsTable');
 const newProtocolButton = document.querySelector('#newProtocolButton');
 const cancelProtocolButton = document.querySelector('#cancelProtocolButton');
+const trackingForm = document.querySelector('#trackingForm');
+const trackingResult = document.querySelector('#trackingResult');
+const reloadTrackingButton = document.querySelector('#reloadTrackingButton');
+const sendNearUnitButton = document.querySelector('#sendNearUnitButton');
+const resetSimulationButton = document.querySelector('#resetSimulationButton');
 
 let units = [];
 let capabilities = [];
 let users = [];
 let protocols = [];
+let trackedOccurrences = [];
+let trackingMap;
+let trackingMarker;
+let trackingUnitMarker;
+let trackingLine;
 let token = localStorage.getItem('adminToken');
 let adminUser = JSON.parse(localStorage.getItem('adminUser') || 'null');
 
@@ -79,6 +91,11 @@ menuUnits.addEventListener('click', () => showSection('units'));
 menuCapabilities.addEventListener('click', () => showSection('capabilities'));
 menuUsers.addEventListener('click', () => showSection('users'));
 menuProtocols.addEventListener('click', () => showSection('protocols'));
+menuTracking.addEventListener('click', async () => {
+  showSection('tracking');
+  await loadTrackedOccurrences();
+  setTimeout(() => trackingMap?.invalidateSize(), 100);
+});
 
 logoutButton.addEventListener('click', () => {
   localStorage.removeItem('adminToken');
@@ -150,12 +167,27 @@ newUserButton.addEventListener('click', resetUserForm);
 cancelUserButton.addEventListener('click', resetUserForm);
 newProtocolButton.addEventListener('click', resetProtocolForm);
 cancelProtocolButton.addEventListener('click', resetProtocolForm);
+reloadTrackingButton.addEventListener('click', loadTrackedOccurrences);
+
+trackingForm.elements.occurrenceId.addEventListener('change', selectTrackedOccurrence);
+trackingForm.elements.progress.addEventListener('input', updatePositionFromProgress);
+trackingForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await sendSimulatedLocation();
+});
+sendNearUnitButton.addEventListener('click', () => {
+  trackingForm.elements.progress.value = '98';
+  updatePositionFromProgress();
+  sendSimulatedLocation();
+});
+resetSimulationButton.addEventListener('click', resetTrackingSimulation);
 
 async function loadAll() {
   await loadUnits();
   await loadCapabilities();
   await loadUsers();
   await loadProtocols();
+  await loadTrackedOccurrences();
 }
 
 async function loadUnits() {
@@ -189,6 +221,20 @@ async function loadProtocols() {
   const data = await response.json();
   protocols = data.protocols || [];
   renderProtocols();
+}
+
+async function loadTrackedOccurrences() {
+  const response = await fetch('/api/admin/tracking/active', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  trackedOccurrences = data.occurrences || [];
+  const select = trackingForm.elements.occurrenceId;
+  select.innerHTML = trackedOccurrences.length
+    ? trackedOccurrences.map((item) => (
+      `<option value="${item.id}">${escapeHtml(item.patient_name)} - ${escapeHtml(item.unit_name)} (${escapeHtml(item.status)})</option>`
+    )).join('')
+    : '<option value="">Nenhuma ocorrencia ativa</option>';
+  selectTrackedOccurrence();
 }
 
 function renderUnits() {
@@ -476,13 +522,15 @@ function showSection(section) {
     units: unitsSection,
     capabilities: capabilitiesSection,
     users: usersSection,
-    protocols: protocolsSection
+    protocols: protocolsSection,
+    tracking: trackingSection
   };
   const menus = {
     units: menuUnits,
     capabilities: menuCapabilities,
     users: menuUsers,
-    protocols: menuProtocols
+    protocols: menuProtocols,
+    tracking: menuTracking
   };
 
   Object.entries(sections).forEach(([key, element]) => {
@@ -493,6 +541,115 @@ function showSection(section) {
     element.classList.toggle('active-menu', key === section);
     element.classList.toggle('secondary', key !== section);
   });
+}
+
+function selectTrackedOccurrence() {
+  const item = currentTrackedOccurrence();
+  if (!item) {
+    trackingResult.textContent = 'Crie uma ocorrencia no app para iniciar a simulacao.';
+    return;
+  }
+
+  const latitude = Number(item.patient_latitude || item.unit_latitude);
+  const longitude = Number(item.patient_longitude || item.unit_longitude);
+  trackingForm.elements.latitude.value = latitude;
+  trackingForm.elements.longitude.value = longitude;
+  trackingForm.elements.progress.value = '0';
+  ensureTrackingMap();
+  updateTrackingMap(latitude, longitude, Number(item.unit_latitude), Number(item.unit_longitude));
+  trackingResult.textContent = item.eta_minutes
+    ? `Ultimo ETA: ${item.eta_minutes} min; distancia: ${item.distance_to_unit_km || '-'} km.`
+    : 'Clique no mapa, use o controle de progresso ou informe coordenadas.';
+}
+
+function updatePositionFromProgress() {
+  const item = currentTrackedOccurrence();
+  if (!item) return;
+
+  const startLat = Number(item.patient_latitude || item.unit_latitude);
+  const startLng = Number(item.patient_longitude || item.unit_longitude);
+  const targetLat = Number(item.unit_latitude);
+  const targetLng = Number(item.unit_longitude);
+  const ratio = Number(trackingForm.elements.progress.value) / 100;
+  const latitude = startLat + (targetLat - startLat) * ratio;
+  const longitude = startLng + (targetLng - startLng) * ratio;
+
+  trackingForm.elements.latitude.value = latitude.toFixed(7);
+  trackingForm.elements.longitude.value = longitude.toFixed(7);
+  updateTrackingMap(latitude, longitude, targetLat, targetLng);
+}
+
+async function sendSimulatedLocation() {
+  const item = currentTrackedOccurrence();
+  if (!item) return;
+
+  const response = await fetch(`/api/admin/tracking/${item.id}/location`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      latitude: Number(trackingForm.elements.latitude.value),
+      longitude: Number(trackingForm.elements.longitude.value),
+      speedMps: Number(trackingForm.elements.speedKmh.value || 0) / 3.6,
+      accuracyMeters: 5
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || 'Nao foi possivel simular a posicao.');
+    return;
+  }
+
+  let resultMessage = `${data.patientName}: ${data.distanceKm} km, ETA ${data.etaMinutes} min${data.proximityAlert ? ' - ALERTA DE PROXIMIDADE' : ''}.`;
+  if (data.suggestion) {
+    resultMessage += ` Sugestao: ${data.suggestion.suggestedUnitName}.`;
+  }
+  await loadTrackedOccurrences();
+  trackingResult.textContent = resultMessage;
+}
+
+async function resetTrackingSimulation() {
+  const item = currentTrackedOccurrence();
+  if (!item) return;
+  const response = await fetch(`/api/admin/tracking/${item.id}/reset`, {
+    method: 'POST',
+    headers: authHeaders(false)
+  });
+  if (await handleSaveResponse(response)) {
+    trackingResult.textContent = 'Alertas e sugestoes pendentes foram reiniciados.';
+  }
+}
+
+function currentTrackedOccurrence() {
+  return trackedOccurrences.find((item) => item.id === trackingForm.elements.occurrenceId.value);
+}
+
+function ensureTrackingMap() {
+  if (trackingMap || !window.L) return;
+  trackingMap = L.map('trackingMap').setView([-23.5505, -46.6333], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(trackingMap);
+  trackingMap.on('click', (event) => {
+    trackingForm.elements.latitude.value = event.latlng.lat.toFixed(7);
+    trackingForm.elements.longitude.value = event.latlng.lng.toFixed(7);
+    const item = currentTrackedOccurrence();
+    if (item) {
+      updateTrackingMap(event.latlng.lat, event.latlng.lng, Number(item.unit_latitude), Number(item.unit_longitude));
+    }
+  });
+}
+
+function updateTrackingMap(patientLat, patientLng, unitLat, unitLng) {
+  if (!trackingMap) return;
+  trackingMarker?.remove();
+  trackingUnitMarker?.remove();
+  trackingLine?.remove();
+  trackingMarker = L.marker([patientLat, patientLng]).addTo(trackingMap).bindPopup('Paciente simulado');
+  trackingUnitMarker = L.marker([unitLat, unitLng]).addTo(trackingMap).bindPopup('Unidade atual');
+  trackingLine = L.polyline([[patientLat, patientLng], [unitLat, unitLng]], { color: '#0f766e' }).addTo(trackingMap);
+  trackingMap.fitBounds([[patientLat, patientLng], [unitLat, unitLng]], { padding: [30, 30], maxZoom: 15 });
 }
 
 function showAdmin() {

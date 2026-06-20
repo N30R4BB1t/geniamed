@@ -94,7 +94,17 @@ async function createOccurrence(req, res, next) {
       return occurrence.rows[0];
     });
 
-    alertHub.publish('occurrence-created', result);
+    const alertResult = await db.query(
+      `SELECT o.*, p.full_name AS patient_name, u.name AS unit_name
+         FROM occurrences o
+         JOIN patients p ON p.id = o.patient_id
+         LEFT JOIN units u ON u.id = o.unit_id
+        WHERE o.id = $1`,
+      [result.id]
+    );
+    const alertOccurrence = alertResult.rows[0] || result;
+
+    alertHub.publish('occurrence-created', alertOccurrence);
     res.status(201).json({ occurrence: result });
   } catch (error) {
     next(error);

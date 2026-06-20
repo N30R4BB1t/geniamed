@@ -108,6 +108,18 @@ button:disabled {
   margin-bottom: 14px;
 }
 
+.map-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#voiceButton.voice-active {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: #ecfdf3;
+}
+
 h1,
 h2,
 p {
@@ -486,6 +498,30 @@ tr:last-child td {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.tracking-simulator-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.tracking-map {
+  height: 560px;
+  min-height: 420px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #eef3f6;
+}
+
+.simulator-coordinates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+input[type="range"] {
+  padding: 0;
 }
 
 .record-app-body {
@@ -1070,7 +1106,8 @@ tr:last-child td {
   .patient-workspace,
   .stat-grid,
   .structured-form-layout,
-  .prescription-workspace {
+  .prescription-workspace,
+  .tracking-simulator-grid {
     grid-template-columns: 1fr;
   }
 

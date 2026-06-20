@@ -3,6 +3,7 @@ const countBadge = document.querySelector('#countBadge');
 const mapSummary = document.querySelector('#mapSummary');
 const mapEl = document.querySelector('#map');
 const refreshButton = document.querySelector('#refreshButton');
+const voiceButton = document.querySelector('#voiceButton');
 const dialog = document.querySelector('#detailsDialog');
 const dialogTitle = document.querySelector('#dialogTitle');
 const dialogBody = document.querySelector('#dialogBody');
@@ -13,6 +14,8 @@ let occurrences = [];
 let map;
 let mapLayer;
 let busyOccurrenceId = null;
+let voiceEnabled = false;
+let selectedVoice = null;
 
 const averageUrbanSpeedKmH = 28;
 
@@ -25,6 +28,8 @@ const statusLabels = {
   FINALIZADA: 'Finalizada',
   CANCELADA: 'Cancelada'
 };
+
+configureVoice();
 
 async function loadOccurrences() {
   const response = await fetch('/api/dashboard/occurrences');
@@ -262,6 +267,63 @@ function showToast(message, type) {
   showToast.timer = setTimeout(() => toast.classList.add('hidden'), 4000);
 }
 
+function configureVoice() {
+  updateVoiceButton();
+  if (!('speechSynthesis' in window)) {
+    voiceButton.disabled = true;
+    voiceButton.textContent = 'Voz indisponivel';
+    return;
+  }
+
+  selectPortugueseVoice();
+  window.speechSynthesis.addEventListener?.('voiceschanged', selectPortugueseVoice);
+}
+
+function selectPortugueseVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  selectedVoice = voices.find((voice) => voice.lang === 'pt-BR')
+    || voices.find((voice) => voice.lang.startsWith('pt'))
+    || null;
+}
+
+function toggleVoice() {
+  if (!('speechSynthesis' in window)) return;
+  voiceEnabled = !voiceEnabled;
+  updateVoiceButton();
+
+  if (voiceEnabled) {
+    speakAlert('Avisos por voz ativados.');
+    showToast('Avisos por voz ativados.', 'success');
+  } else {
+    window.speechSynthesis.cancel();
+    showToast('Avisos por voz desativados.', 'success');
+  }
+}
+
+function updateVoiceButton() {
+  voiceButton.textContent = voiceEnabled ? 'Voz ativada' : 'Ativar voz';
+  voiceButton.classList.toggle('voice-active', voiceEnabled);
+}
+
+function speakAlert(message, interrupt = false) {
+  if (!voiceEnabled || !('speechSynthesis' in window)) return;
+  if (interrupt) window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(message);
+  utterance.lang = 'pt-BR';
+  utterance.rate = 0.95;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+  if (selectedVoice) utterance.voice = selectedVoice;
+  window.speechSynthesis.speak(utterance);
+}
+
+function spokenProblem(data) {
+  const value = data.problem || [data.category, data.subcategory, data.details].filter(Boolean).join(' ');
+  if (!value) return 'demanda nao detalhada';
+  return String(value).replaceAll('_', ' ').toLowerCase();
+}
+
 function ensureMap() {
   if (map) return true;
   if (!window.L) {
@@ -348,21 +410,40 @@ function escapeHtml(value) {
 }
 
 refreshButton.addEventListener('click', loadOccurrences);
+voiceButton.addEventListener('click', toggleVoice);
 closeDialog.addEventListener('click', () => dialog.close());
 
 const events = new EventSource('/api/dashboard/events');
-events.addEventListener('occurrence-created', loadOccurrences);
+events.addEventListener('occurrence-created', (event) => {
+  const data = JSON.parse(event.data);
+  speakAlert(
+    `Nova ocorrencia. Paciente ${data.patient_name}. Problema informado: ${spokenProblem(data)}. Unidade escolhida: ${data.unit_name || 'nao definida'}.`,
+    true
+  );
+  loadOccurrences();
+});
 events.addEventListener('occurrence-updated', loadOccurrences);
 events.addEventListener('patient-location-updated', loadOccurrences);
 events.addEventListener('unit-change-responded', loadOccurrences);
+events.addEventListener('patient-eta-alert', (event) => {
+  const data = JSON.parse(event.data);
+  speakAlert(`Previsao atualizada. Paciente ${data.patientName}, chegada em aproximadamente ${data.etaMinutes} minutos na unidade ${data.unitName}.`);
+});
 events.addEventListener('patient-proximity-alert', (event) => {
   const data = JSON.parse(event.data);
   showToast(`${data.patientName} esta a aproximadamente ${data.etaMinutes} min de ${data.unitName}.`, 'success');
+  speakAlert(`Atencao. O paciente ${data.patientName} esta a aproximadamente ${data.etaMinutes} minutos da unidade ${data.unitName}.`, true);
+});
+events.addEventListener('patient-arrival-alert', (event) => {
+  const data = JSON.parse(event.data);
+  showToast(`${data.patientName} chegou a ${data.unitName}.`, 'success');
+  speakAlert(`Atencao. O paciente ${data.patientName} chegou a unidade ${data.unitName}. Problema informado: ${spokenProblem(data)}.`, true);
 });
 events.addEventListener('unit-change-suggested', (event) => {
   const data = JSON.parse(event.data);
   if (!data.suggestion) return;
   showToast(`${data.patientName}: sugestao de redirecionamento para ${data.suggestion.suggestedUnitName}.`, 'success');
+  speakAlert(`Alerta de trajeto. O paciente ${data.patientName} pode estar se direcionando para outra unidade. Sugestao: ${data.suggestion.suggestedUnitName}.`);
 });
 
 loadOccurrences();

@@ -28,9 +28,9 @@ ON CONFLICT (patient_id) DO NOTHING;
 
 INSERT INTO units (id, name, address, city, state, phone, latitude, longitude)
 VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Hospital Central', 'Av. Paulista, 1000', 'Sao Paulo', 'SP', '+55 11 3000-1000', -23.5651000, -46.6529000),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Pronto Atendimento Norte', 'Rua Voluntarios da Patria, 2200', 'Sao Paulo', 'SP', '+55 11 3000-2000', -23.5001000, -46.6240000),
-  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Clinica Integrada Sul', 'Av. Ibirapuera, 1500', 'Sao Paulo', 'SP', '+55 11 3000-3000', -23.6095000, -46.6660000)
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'HFOA', 'Rua Dr. Miguel Couto, 70, Jardim Amália', 'Volta Redonda', 'RJ', '+55 24 2102-2121', -22.5108850, -44.0821690),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Hospital Nelson dos Santos Gonçalves', 'Rua Paulo Leopoldo Marçal, 298, Aterrado', 'Volta Redonda', 'RJ', '+55 24 3152-8500', -22.5085220, -44.0903690),
+  ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Hospital São João Batista', 'Av. Nossa Senhora das Graças, 235, Colina', 'Volta Redonda', 'RJ', '+55 24 3152-8300', -22.5150540, -44.0880980)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO unit_capabilities (unit_id, need, category, subcategory, min_priority, notes)
