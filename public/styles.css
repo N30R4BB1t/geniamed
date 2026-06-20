@@ -210,6 +210,95 @@ h2 {
   flex-wrap: wrap;
 }
 
+.occurrence-card.is-busy {
+  opacity: .72;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.status-line small {
+  color: var(--muted);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: #edf2f7;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.status-badge.EM_PREPARO {
+  background: #fef0c7;
+  color: #b54708;
+}
+
+.status-badge.AGUARDANDO {
+  background: #e0f2fe;
+  color: #026aa2;
+}
+
+.status-badge.EM_ATENDIMENTO {
+  background: #dcfae6;
+  color: #027a48;
+}
+
+.status-history {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.history-row > span {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.history-row p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dashboard-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2000;
+  max-width: 420px;
+  padding: 13px 16px;
+  border-radius: 7px;
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .22);
+}
+
+.dashboard-toast.success {
+  background: #027a48;
+}
+
+.dashboard-toast.error {
+  background: #b42318;
+}
+
 dialog {
   width: min(720px, calc(100vw - 28px));
   border: 1px solid var(--line);

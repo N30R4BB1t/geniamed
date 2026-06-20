@@ -7,12 +7,24 @@ const dialog = document.querySelector('#detailsDialog');
 const dialogTitle = document.querySelector('#dialogTitle');
 const dialogBody = document.querySelector('#dialogBody');
 const closeDialog = document.querySelector('#closeDialog');
+const toast = document.querySelector('#dashboardToast');
 
 let occurrences = [];
 let map;
 let mapLayer;
+let busyOccurrenceId = null;
 
 const averageUrbanSpeedKmH = 28;
+
+const statusLabels = {
+  ABERTA: 'Aberta',
+  ALERTA_ENVIADO: 'Alerta recebido',
+  EM_PREPARO: 'Em preparo',
+  AGUARDANDO: 'Aguardando chegada',
+  EM_ATENDIMENTO: 'Em atendimento',
+  FINALIZADA: 'Finalizada',
+  CANCELADA: 'Cancelada'
+};
 
 async function loadOccurrences() {
   const response = await fetch('/api/dashboard/occurrences');
@@ -31,7 +43,7 @@ function renderOccurrences() {
   }
 
   occurrencesEl.innerHTML = occurrences.map((item) => `
-    <article class="occurrence-card">
+    <article class="occurrence-card ${busyOccurrenceId === item.id ? 'is-busy' : ''}">
       <div class="occurrence-head">
         <div>
           <strong>${escapeHtml(item.patient_name)}</strong>
@@ -39,18 +51,102 @@ function renderOccurrences() {
         </div>
         <span class="priority ${item.priority}">${item.priority}</span>
       </div>
+      <div class="status-line">
+        <span class="status-badge ${item.status}">${escapeHtml(statusLabels[item.status] || item.status)}</span>
+        <small>${escapeHtml(statusTimeText(item))}</small>
+      </div>
       <div>
         <strong>${escapeHtml(item.need)}</strong>
         <div class="meta">${escapeHtml(item.category || '-')} / ${escapeHtml(item.subcategory || '-')}</div>
         <div class="meta">${escapeHtml(arrivalText(item))}</div>
+        <div class="meta">${escapeHtml(trackingText(item))}</div>
       </div>
       <div class="actions">
         <button class="secondary" onclick="showDetails('${item.id}')">Detalhes</button>
-        <button onclick="updateStatus('${item.id}', 'EM_PREPARO')">Preparar</button>
-        <button onclick="updateStatus('${item.id}', 'EM_ATENDIMENTO')">Atender</button>
+        ${renderOperationalAction(item)}
+        ${item.consultation_id ? `<button class="secondary" onclick="openMedicalRecord('${item.patient_id}')">Abrir prontuario</button>` : ''}
       </div>
     </article>
   `).join('');
+}
+
+function renderOperationalAction(item) {
+  const disabled = busyOccurrenceId === item.id ? 'disabled' : '';
+  const loading = busyOccurrenceId === item.id ? 'Processando...' : null;
+
+  if (item.status === 'ABERTA' || item.status === 'ALERTA_ENVIADO') {
+    return `<button ${disabled} onclick="advanceStatus('${item.id}', 'EM_PREPARO')">${loading || 'Preparar'}</button>`;
+  }
+  if (item.status === 'EM_PREPARO') {
+    return `
+      <button class="secondary" disabled>Em preparo</button>
+      <button ${disabled} onclick="advanceStatus('${item.id}', 'AGUARDANDO')">${loading || 'Aguardar chegada'}</button>
+    `;
+  }
+  if (item.status === 'AGUARDANDO') {
+    return `
+      <button class="secondary" disabled>Aguardando chegada</button>
+      <button ${disabled} onclick="advanceStatus('${item.id}', 'EM_ATENDIMENTO')">${loading || 'Atender'}</button>
+    `;
+  }
+  if (item.status === 'EM_ATENDIMENTO') {
+    return `
+      <button class="secondary" disabled>Em atendimento</button>
+      <button ${disabled} onclick="advanceStatus('${item.id}', 'FINALIZADA')">${loading || 'Finalizar'}</button>
+    `;
+  }
+  return '';
+}
+
+async function advanceStatus(id, status) {
+  const item = occurrences.find((occurrence) => occurrence.id === id);
+  if (!item || busyOccurrenceId) return;
+
+  const messages = {
+    EM_PREPARO: 'Iniciar a preparacao da equipe para este paciente?',
+    AGUARDANDO: 'Confirmar que a unidade esta preparada e aguardando a chegada?',
+    EM_ATENDIMENTO: 'Confirmar a chegada do paciente e iniciar o atendimento?',
+    FINALIZADA: 'Finalizar o atendimento e retirar a ocorrencia da fila ativa?'
+  };
+
+  if (!confirm(messages[status])) return;
+
+  busyOccurrenceId = id;
+  renderOccurrences();
+
+  try {
+    const response = await fetch(`/api/occurrences/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status,
+        actor: 'Equipe do dashboard'
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Nao foi possivel atualizar a ocorrencia.');
+
+    showToast(successMessage(status), 'success');
+    await loadOccurrences();
+
+    if (status === 'EM_ATENDIMENTO' && data.consultationId) {
+      showToast('Atendimento iniciado e consulta clinica criada automaticamente.', 'success');
+    }
+  } catch (error) {
+    showToast(error.message, 'error');
+  } finally {
+    busyOccurrenceId = null;
+    renderOccurrences();
+  }
+}
+
+function successMessage(status) {
+  if (status === 'EM_PREPARO') return 'Preparacao iniciada.';
+  if (status === 'AGUARDANDO') return 'Unidade preparada e aguardando o paciente.';
+  if (status === 'EM_ATENDIMENTO') return 'Atendimento iniciado.';
+  if (status === 'FINALIZADA') return 'Atendimento finalizado.';
+  return 'Status atualizado.';
 }
 
 function renderMap() {
@@ -63,29 +159,20 @@ function renderMap() {
   for (const item of occurrences) {
     const patientPoint = getPatientPoint(item);
     const unitPoint = getUnitPoint(item);
-
     if (!patientPoint && !unitPoint) continue;
     mappedOccurrences += 1;
 
     if (patientPoint) {
-      L.marker(patientPoint, {
-        title: `Paciente: ${item.patient_name}`
-      }).bindPopup(`
-        <strong>Paciente</strong><br>
-        ${escapeHtml(item.patient_name)}<br>
-        ${escapeHtml(item.need)} · ${escapeHtml(item.priority)}
-      `).addTo(mapLayer);
+      L.marker(patientPoint, { title: `Paciente: ${item.patient_name}` })
+        .bindPopup(`<strong>Paciente</strong><br>${escapeHtml(item.patient_name)}<br>${escapeHtml(item.need)} · ${escapeHtml(item.priority)}`)
+        .addTo(mapLayer);
       visiblePoints.push(patientPoint);
     }
 
     if (unitPoint) {
-      L.marker(unitPoint, {
-        title: `Unidade: ${item.unit_name}`
-      }).bindPopup(`
-        <strong>Unidade escolhida</strong><br>
-        ${escapeHtml(item.unit_name || 'Unidade')}<br>
-        ${escapeHtml(item.unit_address || '')}
-      `).addTo(mapLayer);
+      L.marker(unitPoint, { title: `Unidade: ${item.unit_name}` })
+        .bindPopup(`<strong>Unidade escolhida</strong><br>${escapeHtml(item.unit_name || 'Unidade')}<br>${escapeHtml(item.unit_address || '')}`)
+        .addTo(mapLayer);
       visiblePoints.push(unitPoint);
     }
 
@@ -105,7 +192,6 @@ function renderMap() {
   }
 
   setTimeout(() => map.invalidateSize(), 100);
-
   const withEta = occurrences.filter((item) => estimateArrival(item)).length;
   mapSummary.textContent = mappedOccurrences === 0
     ? 'Aguardando ocorrencias com localizacao.'
@@ -120,7 +206,7 @@ function showDetails(id) {
   dialogBody.innerHTML = `
     <div class="record-grid">
       <div class="info-box"><strong>Ocorrencia</strong><p>${escapeHtml(item.need)} · ${escapeHtml(item.category || '-')} · ${escapeHtml(item.subcategory || '-')}</p></div>
-      <div class="info-box"><strong>Status</strong><p>${escapeHtml(item.status)} · ${escapeHtml(item.priority)}</p></div>
+      <div class="info-box"><strong>Status atual</strong><p>${escapeHtml(statusLabels[item.status] || item.status)} · ${escapeHtml(item.priority)}</p></div>
       <div class="info-box"><strong>Unidade escolhida</strong><p>${escapeHtml(item.unit_name || 'Nao definida')}</p></div>
       <div class="info-box"><strong>Previsao de chegada</strong><p>${escapeHtml(arrivalText(item))}</p></div>
       <div class="info-box"><strong>Alergias</strong><p>${escapeHtml(item.allergies || 'Nao informado')}</p></div>
@@ -128,22 +214,56 @@ function showDetails(id) {
       <div class="info-box"><strong>Medicamentos</strong><p>${escapeHtml(item.current_medications || 'Nao informado')}</p></div>
       <div class="info-box"><strong>Tipo sanguineo</strong><p>${escapeHtml(item.blood_type || 'Nao informado')}</p></div>
     </div>
+    <div class="status-history">
+      <h3>Historico operacional</h3>
+      ${renderStatusHistory(item.status_history)}
+    </div>
   `;
   dialog.showModal();
 }
 
-async function updateStatus(id, status) {
-  await fetch(`/api/occurrences/${id}/status`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status })
-  });
-  await loadOccurrences();
+function renderStatusHistory(history) {
+  if (!Array.isArray(history) || history.length === 0) {
+    return '<p class="meta">Nenhuma transicao registrada.</p>';
+  }
+
+  return history.map((entry) => `
+    <div class="history-row">
+      <span></span>
+      <div>
+        <strong>${escapeHtml(statusLabels[entry.toStatus] || entry.toStatus)}</strong>
+        <p>${formatDateTime(entry.createdAt)} · ${escapeHtml(entry.actor || 'Sistema')}</p>
+        ${entry.notes ? `<small>${escapeHtml(entry.notes)}</small>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function statusTimeText(item) {
+  const value = item.attended_at || item.awaiting_arrival_at || item.prepared_at || item.created_at;
+  return `Atualizado em ${formatDateTime(value)}`;
+}
+
+function trackingText(item) {
+  if (!item.last_location_at) return 'Aguardando primeira atualizacao de localizacao.';
+  const ageSeconds = Math.round((Date.now() - new Date(item.last_location_at).getTime()) / 1000);
+  if (ageSeconds > 90) return `Atencao: localizacao desatualizada ha ${ageSeconds} segundos.`;
+  return `Localizacao atualizada ha ${Math.max(0, ageSeconds)} segundos.`;
+}
+
+function openMedicalRecord(patientId) {
+  window.location.href = `/prontuario.html?view=patients&patientId=${encodeURIComponent(patientId)}`;
+}
+
+function showToast(message, type) {
+  toast.textContent = message;
+  toast.className = `dashboard-toast ${type}`;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.add('hidden'), 4000);
 }
 
 function ensureMap() {
   if (map) return true;
-
   if (!window.L) {
     mapSummary.textContent = 'Nao foi possivel carregar o servico de mapa.';
     mapEl.innerHTML = '<div class="map-error">Leaflet nao carregou. Verifique a conexao com a internet ou bloqueio ao CDN unpkg.com.</div>';
@@ -156,7 +276,6 @@ function ensureMap() {
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
   mapLayer = L.layerGroup().addTo(map);
-
   setTimeout(() => map.invalidateSize(), 100);
   return true;
 }
@@ -175,19 +294,15 @@ function estimateArrival(item) {
   const patientPoint = getPatientPoint(item);
   const unitPoint = getUnitPoint(item);
   if (!patientPoint || !unitPoint) return null;
-
-  const distance = distanceKm(
-    patientPoint[0],
-    patientPoint[1],
-    unitPoint[0],
-    unitPoint[1]
-  );
+  const distance = distanceKm(patientPoint[0], patientPoint[1], unitPoint[0], unitPoint[1]);
   const minutes = Math.max(3, Math.round((distance / averageUrbanSpeedKmH) * 60));
-
   return { distanceKm: distance, minutes };
 }
 
 function arrivalText(item) {
+  if (item.eta_minutes !== null && item.eta_minutes !== undefined) {
+    return `${Number(item.distance_to_unit_km || 0).toFixed(1)} km · chegada estimada em ${item.eta_minutes} min`;
+  }
   const eta = estimateArrival(item);
   if (!eta) return 'Previsao indisponivel: faltam coordenadas.';
   return `${eta.distanceKm.toFixed(1)} km · chegada estimada em ${eta.minutes} min`;
@@ -201,7 +316,6 @@ function distanceKm(originLat, originLng, targetLat, targetLng) {
     Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
     Math.cos(toRad(originLat)) * Math.cos(toRad(targetLat)) *
     Math.sin(lngDelta / 2) * Math.sin(lngDelta / 2);
-
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -216,8 +330,16 @@ function priorityColor(priority) {
   return '#0f766e';
 }
 
+function formatDateTime(value) {
+  if (!value) return 'Nao informado';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(new Date(value));
+}
+
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -231,5 +353,16 @@ closeDialog.addEventListener('click', () => dialog.close());
 const events = new EventSource('/api/dashboard/events');
 events.addEventListener('occurrence-created', loadOccurrences);
 events.addEventListener('occurrence-updated', loadOccurrences);
+events.addEventListener('patient-location-updated', loadOccurrences);
+events.addEventListener('unit-change-responded', loadOccurrences);
+events.addEventListener('patient-proximity-alert', (event) => {
+  const data = JSON.parse(event.data);
+  showToast(`${data.patientName} esta a aproximadamente ${data.etaMinutes} min de ${data.unitName}.`, 'success');
+});
+events.addEventListener('unit-change-suggested', (event) => {
+  const data = JSON.parse(event.data);
+  if (!data.suggestion) return;
+  showToast(`${data.patientName}: sugestao de redirecionamento para ${data.suggestion.suggestedUnitName}.`, 'success');
+});
 
 loadOccurrences();

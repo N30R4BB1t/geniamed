@@ -772,6 +772,16 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-loadData().catch(() => {
-  recentPatients.innerHTML = emptyState('Erro ao carregar dados', 'Verifique se o webservice esta ativo.');
-});
+loadData()
+  .then(async () => {
+    const params = new URLSearchParams(window.location.search);
+    const patientId = params.get('patientId');
+    const view = params.get('view');
+
+    if (view === 'patients' && patientId) {
+      await selectPatient(patientId);
+    }
+  })
+  .catch(() => {
+    recentPatients.innerHTML = emptyState('Erro ao carregar dados', 'Verifique se o webservice esta ativo.');
+  });
