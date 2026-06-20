@@ -21,8 +21,8 @@
         <button data-view="anamnesis">Anamneses</button>
         <button data-view="consultations">Consultas</button>
         <button data-view="prescriptions">Prescricoes</button>
-        <button data-view="timeline">Evolucoes <span>Em breve</span></button>
-        <button data-view="attachments">Anexos <span>Em breve</span></button>
+        <button data-view="timeline">Evolucoes</button>
+        <button data-view="attachments">Anexos</button>
       </nav>
 
       <div class="record-sidebar-footer">
@@ -122,6 +122,327 @@
               <p>Selecione um paciente para visualizar o resumo clinico.</p>
             </section>
           </div>
+        </section>
+
+        <section id="triageView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Triagens</h1>
+              <p>Registre dados objetivos sem classificacao automatica de risco.</p>
+            </div>
+            <button id="newTriageButton">Nova triagem</button>
+          </div>
+          <section id="triageList" class="record-card module-list"></section>
+        </section>
+
+        <section id="triageFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Triagens</h1>
+              <p>Registre dados objetivos sem classificacao automatica de risco.</p>
+            </div>
+          </div>
+          <section class="record-card">
+            <div class="record-card-head form-head">
+              <div>
+                <h2>Nova triagem</h2>
+                <span>Os valores sao apenas registrados; o sistema nao interpreta sinais vitais.</span>
+              </div>
+              <button id="closeTriageForm" class="secondary" type="button">Fechar</button>
+            </div>
+            <form id="triageForm" class="clinical-form">
+              <label class="wide">Paciente ficticio * <select name="patientId" required></select></label>
+              <label class="wide">Queixa principal * <textarea name="complaint" required></textarea></label>
+              <label>Pressao sistolica (mmHg) <input name="systolic" type="number"></label>
+              <label>Pressao diastolica (mmHg) <input name="diastolic" type="number"></label>
+              <label>Frequencia cardiaca (bpm) <input name="heartRate" type="number"></label>
+              <label>Frequencia respiratoria (irpm) <input name="respRate" type="number"></label>
+              <label>Temperatura (C) <input name="temperature" type="number" step="0.1"></label>
+              <label>Saturacao (%) <input name="saturation" type="number"></label>
+              <label>Peso (kg) <input name="weight" type="number" step="0.1"></label>
+              <label>Altura (m) <input name="height" type="number" step="0.01"></label>
+              <label>IMC calculado <input name="bmi" readonly></label>
+              <label>Escala de dor (0-10)
+                <select name="painScale">
+                  <option value="">Selecionar</option>
+                  <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
+                  <option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+                </select>
+              </label>
+              <div class="form-actions wide"><button>Salvar registro</button></div>
+            </form>
+          </section>
+        </section>
+
+        <section id="anamnesisView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Anamneses</h1>
+              <p>Registro clinico estruturado com narrativa livre e historico preservado.</p>
+            </div>
+            <button id="newAnamnesisButton">Nova anamnese</button>
+          </div>
+          <section id="anamnesisList" class="record-card module-list"></section>
+        </section>
+
+        <section id="anamnesisFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Nova anamnese</h1>
+              <p>Estruture o registro sem perder a narrativa clinica.</p>
+            </div>
+          </div>
+          <div class="structured-form-layout">
+            <aside class="section-index">
+              <strong>SECOES</strong>
+              <a href="#anam-ident">Identificacao</a>
+              <a href="#anam-hda">Historia atual</a>
+              <a href="#anam-antecedentes">Antecedentes</a>
+              <a href="#anam-habitos">Habitos e familia</a>
+              <a href="#anam-exame">Revisao e exame</a>
+            </aside>
+            <form id="anamnesisForm" class="structured-form">
+              <button class="assist-button" type="button">Iniciar captura assistida</button>
+              <section id="anam-ident" class="form-section-card">
+                <h2>Identificacao e queixa</h2>
+                <div class="clinical-form">
+                  <label>Paciente ficticio * <select name="patientId" required></select></label>
+                  <label class="wide">Queixa principal * <textarea name="complaint" required></textarea></label>
+                </div>
+              </section>
+              <section id="anam-hda" class="form-section-card">
+                <h2>Historia da doenca atual</h2>
+                <label>Historia da doenca atual * <textarea name="currentHistory" required></textarea></label>
+              </section>
+              <section id="anam-antecedentes" class="form-section-card">
+                <h2>Antecedentes</h2>
+                <div class="clinical-form">
+                  <label>Antecedentes pessoais <textarea name="personalHistory"></textarea></label>
+                  <label>Antecedentes cirurgicos <textarea name="surgicalHistory"></textarea></label>
+                  <label>Alergias <textarea name="allergies"></textarea></label>
+                  <label>Medicamentos em uso <textarea name="medications"></textarea></label>
+                  <label class="wide">Historia gineco-obstetrica (opcional) <textarea name="gynecoHistory"></textarea></label>
+                </div>
+              </section>
+              <section id="anam-habitos" class="form-section-card">
+                <h2>Familia e habitos</h2>
+                <div class="clinical-form">
+                  <label>Historico familiar <textarea name="familyHistory"></textarea></label>
+                  <label>Habitos de vida <textarea name="habits"></textarea></label>
+                </div>
+              </section>
+              <section id="anam-exame" class="form-section-card">
+                <h2>Revisao e exame fisico</h2>
+                <div class="clinical-form">
+                  <label>Revisao por sistemas <textarea name="systemsReview"></textarea></label>
+                  <label>Exame fisico <textarea name="physicalExam"></textarea></label>
+                </div>
+              </section>
+              <div class="sticky-actions">
+                <button id="cancelAnamnesisForm" class="secondary" type="button">Cancelar</button>
+                <button>Salvar rascunho</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section id="consultationsView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Consultas</h1>
+              <p>Conecte triagem, anamnese, diagnostico e conduta.</p>
+            </div>
+            <button id="newConsultationButton">Nova consulta</button>
+          </div>
+          <section id="consultationsList" class="record-card module-list"></section>
+        </section>
+
+        <section id="consultationFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Consultas</h1>
+              <p>Conecte triagem, anamnese, diagnostico e conduta.</p>
+            </div>
+          </div>
+          <section class="record-card">
+            <div class="record-card-head form-head">
+              <div>
+                <h2>Nova consulta</h2>
+                <span>Selecione os registros que compoem este atendimento.</span>
+              </div>
+              <button id="closeConsultationForm" class="secondary" type="button">Fechar</button>
+            </div>
+            <form id="consultationForm" class="clinical-form">
+              <label>Paciente ficticio * <select name="patientId" required></select></label>
+              <label>Estado da consulta *
+                <select name="status" required>
+                  <option value="">Selecionar</option>
+                  <option value="EM_ANDAMENTO">Em andamento</option>
+                  <option value="FINALIZADA">Finalizada</option>
+                  <option value="RETORNO_SOLICITADO">Retorno solicitado</option>
+                </select>
+              </label>
+              <label>Triagem vinculada <select name="triageId"></select></label>
+              <label>Anamnese vinculada <select name="anamnesisId"></select></label>
+              <label class="wide">Hipotese/diagnostico CID-10 <input name="cid" placeholder="Buscar por codigo ou descricao"></label>
+              <label class="wide">Conduta <textarea name="conduct"></textarea></label>
+              <label class="wide">Orientacoes de retorno <textarea name="returnGuidance"></textarea></label>
+              <div class="form-actions wide"><button>Salvar registro</button></div>
+            </form>
+          </section>
+        </section>
+
+        <section id="prescriptionsView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Prescricoes</h1>
+              <p>Monte rascunhos academicos sem validade clinica.</p>
+            </div>
+            <button id="newPrescriptionButton">Nova prescricao</button>
+          </div>
+          <section id="prescriptionsList" class="record-card module-list"></section>
+        </section>
+
+        <section id="prescriptionFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Prescricoes</h1>
+              <p>Monte rascunhos academicos sem validade clinica.</p>
+            </div>
+          </div>
+          <form id="prescriptionForm" class="prescription-workspace">
+            <section class="record-card">
+              <div class="record-card-head">
+                <h2>Identificacao</h2>
+                <span>Vincule o rascunho a um paciente e uma consulta.</span>
+              </div>
+              <div class="clinical-form">
+                <label>Paciente ficticio * <select name="patientId" required></select></label>
+                <label>Consulta vinculada <select name="consultationId"></select></label>
+                <label class="wide">Medicamento pelo nome generico DCB * <input name="medication" placeholder="Buscar principio ativo"></label>
+                <label>Dose * <input name="dose"></label>
+                <label>Forma farmaceutica * <input name="form" placeholder="Ex.: comprimido"></label>
+                <label>Via *
+                  <select name="route">
+                    <option value="">Selecionar</option>
+                    <option>Oral</option>
+                    <option>Topica</option>
+                    <option>Intramuscular</option>
+                    <option>Intravenosa</option>
+                    <option>Inalatoria</option>
+                  </select>
+                </label>
+                <label>Frequencia * <input name="frequency" placeholder="Ex.: 8/8 horas"></label>
+                <label>Duracao * <input name="duration" placeholder="Ex.: 7 dias"></label>
+                <label class="wide">Orientacoes <textarea name="instructions"></textarea></label>
+              </div>
+              <div class="form-actions prescription-add"><button id="addPrescriptionItem" class="secondary" type="button">Adicionar item</button></div>
+            </section>
+            <section class="record-card prescription-preview">
+              <div class="prototype-stamp">PROTOTIPO ACADEMICO - SEM VALIDADE CLINICA</div>
+              <h2>Rascunho da prescricao</h2>
+              <p id="prescriptionPatientName">Selecione um paciente</p>
+              <div id="prescriptionItems" class="clinical-list"></div>
+              <div class="form-actions">
+                <button id="cancelPrescriptionForm" class="secondary" type="button">Cancelar</button>
+                <button>Salvar rascunho</button>
+              </div>
+            </section>
+          </form>
+        </section>
+
+        <section id="timelineView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Evolucoes</h1>
+              <p>Registre a linha do tempo clinica e acompanhe a resposta do paciente.</p>
+            </div>
+            <button id="newEvolutionButton">Nova evolucao</button>
+          </div>
+          <section id="evolutionsList" class="record-card module-list"></section>
+        </section>
+
+        <section id="evolutionFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Nova evolucao</h1>
+              <p>Estruture o registro em formato SOAP ou nota livre.</p>
+            </div>
+          </div>
+          <section class="record-card">
+            <div class="record-card-head form-head">
+              <div>
+                <h2>Registro de evolucao</h2>
+                <span>Documento academico vinculado ao prontuario do paciente.</span>
+              </div>
+              <button id="closeEvolutionForm" class="secondary" type="button">Fechar</button>
+            </div>
+            <form id="evolutionForm" class="clinical-form">
+              <label>Paciente ficticio * <select name="patientId" required></select></label>
+              <label>Consulta vinculada <select name="consultationId"></select></label>
+              <label>Tipo de evolucao
+                <select name="evolutionType">
+                  <option value="EVOLUCAO">Evolucao</option>
+                  <option value="INTERCORRENCIA">Intercorrencia</option>
+                  <option value="RETORNO">Retorno</option>
+                  <option value="ALTA">Alta</option>
+                </select>
+              </label>
+              <label class="wide">Subjetivo <textarea name="subjective" placeholder="Relato do paciente, sintomas, queixas e percepcoes."></textarea></label>
+              <label class="wide">Objetivo <textarea name="objective" placeholder="Achados objetivos, sinais, exame, dados observaveis."></textarea></label>
+              <label class="wide">Avaliacao <textarea name="assessment" placeholder="Impressao clinica academica e hipoteses."></textarea></label>
+              <label class="wide">Plano <textarea name="plan" placeholder="Conduta, acompanhamento, orientacoes e proximos passos."></textarea></label>
+              <label class="wide">Notas adicionais <textarea name="notes"></textarea></label>
+              <div class="form-actions wide"><button>Salvar evolucao</button></div>
+            </form>
+          </section>
+        </section>
+
+        <section id="attachmentsView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Anexos</h1>
+              <p>Catalogue documentos, exames e arquivos externos vinculados ao paciente.</p>
+            </div>
+            <button id="newAttachmentButton">Novo anexo</button>
+          </div>
+          <section id="attachmentsList" class="record-card module-list"></section>
+        </section>
+
+        <section id="attachmentFormView" class="record-view hidden">
+          <div class="record-hero compact">
+            <div>
+              <h1>Novo anexo</h1>
+              <p>Registre metadados do documento. Upload binario pode ser integrado depois via storage.</p>
+            </div>
+          </div>
+          <section class="record-card">
+            <div class="record-card-head form-head">
+              <div>
+                <h2>Cadastro de anexo</h2>
+                <span>Use links ou caminhos de arquivo para prototipagem.</span>
+              </div>
+              <button id="closeAttachmentForm" class="secondary" type="button">Fechar</button>
+            </div>
+            <form id="attachmentForm" class="clinical-form">
+              <label>Paciente ficticio * <select name="patientId" required></select></label>
+              <label>Consulta vinculada <select name="consultationId"></select></label>
+              <label class="wide">Titulo do documento * <input name="title" required placeholder="Ex.: Hemograma, ECG, Receita externa"></label>
+              <label>Tipo do documento
+                <select name="documentType">
+                  <option value="EXAME">Exame</option>
+                  <option value="IMAGEM">Imagem</option>
+                  <option value="LAUDO">Laudo</option>
+                  <option value="DOCUMENTO">Documento</option>
+                  <option value="OUTRO">Outro</option>
+                </select>
+              </label>
+              <label>Nome do arquivo <input name="fileName" placeholder="arquivo.pdf"></label>
+              <label class="wide">URL ou caminho do arquivo <input name="fileUrl" placeholder="https://... ou caminho interno"></label>
+              <label class="wide">Descricao <textarea name="description"></textarea></label>
+              <div class="form-actions wide"><button>Salvar anexo</button></div>
+            </form>
+          </section>
         </section>
 
         <section id="placeholderView" class="record-view hidden">

@@ -6,5 +6,6 @@ router.use('/occurrences', require('./occurrenceRoutes'));
 router.use('/units', require('./unitRoutes'));
 router.use('/dashboard', require('./dashboardRoutes'));
 router.use('/admin', require('./adminRoutes'));
+router.use('/clinical', require('./clinicalRoutes'));
 
 module.exports = router;

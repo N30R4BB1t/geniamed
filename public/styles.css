@@ -260,6 +260,16 @@ input {
   padding: 0 12px;
 }
 
+textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  resize: vertical;
+  font: inherit;
+}
+
 select {
   width: 100%;
   min-height: 40px;
@@ -771,6 +781,173 @@ tr:last-child td {
   grid-column: 1 / -1;
 }
 
+.module-list {
+  min-height: 190px;
+}
+
+.form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.clinical-form {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.clinical-form .wide,
+.clinical-form .form-actions.wide {
+  grid-column: 1 / -1;
+}
+
+.clinical-form label,
+.patient-form label {
+  color: #304452;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.clinical-form textarea[name="complaint"],
+.clinical-form textarea[name="conduct"] {
+  min-height: 92px;
+}
+
+.structured-form-layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.section-index {
+  align-self: start;
+  position: sticky;
+  top: 16px;
+  background: #fff;
+  border: 1px solid #d7e2e7;
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.section-index strong {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.section-index a {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.structured-form {
+  display: grid;
+  gap: 14px;
+}
+
+.assist-button {
+  background: #eefaf7;
+  color: var(--accent);
+  border-color: #bee8df;
+}
+
+.form-section-card {
+  background: #fff;
+  border: 1px solid #d7e2e7;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.form-section-card h2 {
+  padding: 16px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-section-card > label {
+  display: block;
+  padding: 20px;
+  color: #304452;
+  font-weight: 700;
+}
+
+.form-section-card textarea {
+  min-height: 146px;
+}
+
+.sticky-actions {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  border: 1px solid #d7e2e7;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: end;
+  gap: 10px;
+}
+
+.prescription-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.prescription-add {
+  justify-content: end;
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.prescription-preview {
+  padding: 20px;
+}
+
+.prototype-stamp {
+  border: 1px solid #ef9a90;
+  background: #fff5f3;
+  color: #b42318;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 9px;
+  margin-bottom: 26px;
+}
+
+.module-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.module-row:last-child {
+  border-bottom: 0;
+}
+
+.module-row div {
+  display: grid;
+  gap: 4px;
+}
+
+.module-row small,
+.module-row p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.module-row.compact {
+  padding: 10px 0;
+}
+
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;
@@ -802,8 +979,14 @@ tr:last-child td {
 
   .record-two-col,
   .patient-workspace,
-  .stat-grid {
+  .stat-grid,
+  .structured-form-layout,
+  .prescription-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .section-index {
+    position: static;
   }
 }
 
@@ -840,11 +1023,14 @@ tr:last-child td {
   }
 
   .patient-search,
-  .patient-form {
+  .patient-form,
+  .clinical-form {
     grid-template-columns: 1fr;
   }
 
-  .patient-form-wide {
+  .patient-form-wide,
+  .clinical-form .wide,
+  .clinical-form .form-actions.wide {
     grid-column: auto;
   }
 

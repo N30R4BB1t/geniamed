@@ -1,4 +1,4 @@
-const crypto = require('node:crypto');
+const crypto = require('crypto');
 
 const secret = process.env.AUTH_SECRET || 'dev-secret-change-me';
 
