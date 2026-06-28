@@ -1,5 +1,7 @@
 const router = require('express').Router();
 const { adminAuth } = require('../middlewares/adminAuth');
+const { requireCsrf } = require('../middlewares/auth');
+const { audit } = require('../middlewares/audit');
 const unitController = require('../controllers/adminUnitController');
 const capabilityController = require('../controllers/adminCapabilityController');
 const userController = require('../controllers/adminUserController');
@@ -7,6 +9,8 @@ const protocolController = require('../controllers/adminProtocolController');
 const trackingController = require('../controllers/adminTrackingController');
 
 router.use(adminAuth);
+router.use(requireCsrf);
+router.use(audit('ADMIN_ACCESS', 'administration'));
 
 router.get('/units', unitController.list);
 router.get('/units/:id', unitController.getById);

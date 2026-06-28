@@ -1,22 +1,27 @@
 const router = require('express').Router();
 const controller = require('../controllers/clinicalController');
+const { allowRoles, requireAuth, requireCsrf } = require('../middlewares/auth');
+const { audit } = require('../middlewares/audit');
 
-router.get('/triages', controller.listTriages);
-router.post('/triages', controller.createTriage);
+router.use(requireAuth);
+router.use(requireCsrf);
+router.use(audit('CLINICAL_ACCESS', 'clinical_records'));
 
-router.get('/anamneses', controller.listAnamneses);
-router.post('/anamneses', controller.createAnamnesis);
+router.get('/triages', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listTriages);
+router.post('/triages', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.createTriage);
+router.get('/anamneses', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listAnamneses);
+router.post('/anamneses', ...allowRoles('ADMIN', 'MEDICO'), controller.createAnamnesis);
 
-router.get('/consultations', controller.listConsultations);
-router.post('/consultations', controller.createConsultation);
+router.get('/consultations', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listConsultations);
+router.post('/consultations', ...allowRoles('ADMIN', 'MEDICO'), controller.createConsultation);
 
-router.get('/prescriptions', controller.listPrescriptions);
-router.post('/prescriptions', controller.createPrescription);
+router.get('/prescriptions', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listPrescriptions);
+router.post('/prescriptions', ...allowRoles('ADMIN', 'MEDICO'), controller.createPrescription);
 
-router.get('/evolutions', controller.listEvolutions);
-router.post('/evolutions', controller.createEvolution);
+router.get('/evolutions', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listEvolutions);
+router.post('/evolutions', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.createEvolution);
 
-router.get('/attachments', controller.listAttachments);
-router.post('/attachments', controller.createAttachment);
+router.get('/attachments', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listAttachments);
+router.post('/attachments', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.createAttachment);
 
 module.exports = router;

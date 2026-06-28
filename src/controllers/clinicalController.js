@@ -2,11 +2,11 @@ const { z } = require('zod');
 const db = require('../config/database');
 
 const uuid = z.string().uuid();
-const nullableText = z.string().optional().nullable();
+const nullableText = z.string().max(10000).optional().nullable();
 
 const triageSchema = z.object({
   patientId: uuid,
-  complaint: z.string().min(1),
+  complaint: z.string().min(1).max(4000),
   systolic: z.coerce.number().int().optional().nullable(),
   diastolic: z.coerce.number().int().optional().nullable(),
   heartRate: z.coerce.number().int().optional().nullable(),
@@ -21,8 +21,8 @@ const triageSchema = z.object({
 
 const anamnesisSchema = z.object({
   patientId: uuid,
-  complaint: z.string().min(1),
-  currentHistory: z.string().min(1),
+  complaint: z.string().min(1).max(4000),
+  currentHistory: z.string().min(1).max(10000),
   personalHistory: nullableText,
   surgicalHistory: nullableText,
   allergies: nullableText,
@@ -48,14 +48,14 @@ const prescriptionSchema = z.object({
   patientId: uuid,
   consultationId: uuid.optional().nullable(),
   items: z.array(z.object({
-    medication: z.string().min(1),
-    dose: z.string().min(1),
-    pharmaceuticalForm: z.string().min(1),
-    route: z.string().min(1),
-    frequency: z.string().min(1),
-    duration: z.string().min(1),
+    medication: z.string().min(1).max(200),
+    dose: z.string().min(1).max(100),
+    pharmaceuticalForm: z.string().min(1).max(100),
+    route: z.string().min(1).max(80),
+    frequency: z.string().min(1).max(100),
+    duration: z.string().min(1).max(100),
     instructions: nullableText
-  })).min(1)
+  })).min(1).max(50)
 });
 
 const evolutionSchema = z.object({
@@ -75,7 +75,10 @@ const attachmentSchema = z.object({
   title: z.string().min(1).max(180),
   documentType: z.string().max(80).optional().nullable(),
   fileName: z.string().max(220).optional().nullable(),
-  fileUrl: nullableText,
+  fileUrl: z.string().max(2000).refine(
+    (value) => !value || value.startsWith('/') || value.startsWith('https://'),
+    'O arquivo deve usar HTTPS ou caminho interno.'
+  ).optional().nullable(),
   description: nullableText
 });
 

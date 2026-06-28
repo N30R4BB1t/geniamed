@@ -1,11 +1,18 @@
 const crypto = require('crypto');
 
-const secret = process.env.AUTH_SECRET || 'dev-secret-change-me';
+function getSecret() {
+  const secret = process.env.AUTH_SECRET;
+  const production = ['production', 'prod'].includes(process.env.NODE_ENV);
+  if (production && (!secret || secret.length < 32)) {
+    throw new Error('AUTH_SECRET deve possuir pelo menos 32 caracteres em producao.');
+  }
+  return secret || 'development-only-secret-change-before-production';
+}
 
 function sign(payload) {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
-    .createHmac('sha256', secret)
+    .createHmac('sha256', getSecret())
     .update(body)
     .digest('base64url');
 
@@ -15,9 +22,11 @@ function sign(payload) {
 function verify(token) {
   if (!token || !token.includes('.')) return null;
 
-  const [body, signature] = token.split('.');
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [body, signature] = parts;
   const expected = crypto
-    .createHmac('sha256', secret)
+    .createHmac('sha256', getSecret())
     .update(body)
     .digest('base64url');
 

@@ -1,5 +1,14 @@
 const { z } = require('zod');
 const db = require('../config/database');
+const sessionService = require('../services/sessionService');
+
+const strongPassword = z.string()
+  .min(12)
+  .max(120)
+  .regex(/[a-z]/)
+  .regex(/[A-Z]/)
+  .regex(/[0-9]/)
+  .regex(/[^A-Za-z0-9]/);
 
 const baseSchema = z.object({
   username: z.string().min(3).max(80),
@@ -9,11 +18,11 @@ const baseSchema = z.object({
 });
 
 const createSchema = baseSchema.extend({
-  password: z.string().min(6).max(120)
+  password: strongPassword
 });
 
 const updateSchema = baseSchema.extend({
-  password: z.string().min(6).max(120).optional().nullable()
+  password: strongPassword.optional().nullable()
 });
 
 async function list(req, res, next) {
@@ -59,6 +68,9 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const input = updateSchema.parse(req.body);
+    if (req.user.id === req.params.id && (!input.active || input.role !== 'ADMIN')) {
+      return res.status(400).json({ error: 'Voce nao pode remover o proprio acesso administrativo.' });
+    }
     const params = [
       input.username.trim(),
       input.fullName.trim(),
@@ -85,6 +97,10 @@ async function update(req, res, next) {
     const result = await db.query(sql, params);
 
     if (result.rowCount === 0) return res.status(404).json({ error: 'Usuario nao encontrado.' });
+
+    if (input.password || !input.active) {
+      await sessionService.revokeUserSessions(result.rows[0].id, req.user.id === result.rows[0].id ? req.user.session_id : null);
+    }
 
     await log(req, 'UPDATE', result.rows[0].id, result.rows[0]);
     res.json({ user: result.rows[0] });

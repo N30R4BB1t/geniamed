@@ -1,6 +1,7 @@
 const { z } = require('zod');
 const db = require('../config/database');
 const { sha256 } = require('../services/hashService');
+const tokenService = require('../services/tokenService');
 
 const schema = z.object({
   qrToken: z.string().min(3)
@@ -25,11 +26,17 @@ async function identifyByQrCode(req, res, next) {
       return res.status(404).json({ error: 'QR Code nao identificado ou expirado.' });
     }
 
-    res.json({ patient: result.rows[0] });
+    const patient = result.rows[0];
+    const patientAccessToken = tokenService.sign({
+      purpose: 'PATIENT_ACCESS',
+      patientId: patient.id,
+      exp: Date.now() + 30 * 60 * 1000
+    });
+
+    res.json({ patient, patientAccessToken });
   } catch (error) {
     next(error);
   }
 }
 
 module.exports = { identifyByQrCode };
-

@@ -8,11 +8,11 @@ const createSchema = z.object({
   sex: z.enum(['F', 'M', 'O', 'NI']).default('NI'),
   phone: z.string().max(30).optional().nullable(),
   email: z.string().email().optional().nullable(),
-  allergies: z.string().optional().nullable(),
-  chronicConditions: z.string().optional().nullable(),
-  currentMedications: z.string().optional().nullable(),
+  allergies: z.string().max(4000).optional().nullable(),
+  chronicConditions: z.string().max(4000).optional().nullable(),
+  currentMedications: z.string().max(4000).optional().nullable(),
   bloodType: z.string().max(5).optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().max(10000).optional().nullable()
 });
 
 async function listPatients(req, res, next) {

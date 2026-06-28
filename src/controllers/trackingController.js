@@ -112,6 +112,8 @@ async function updateLocation(req, res, next) {
       distanceKm: Number(distance.toFixed(2)),
       etaMinutes,
       unitName: occurrence.unit_name,
+      unitLatitude: Number(occurrence.unit_latitude),
+      unitLongitude: Number(occurrence.unit_longitude),
       proximityAlert: etaMinutes <= 2,
       arrived: distance <= 0.15,
       problem: formatProblem(occurrence),

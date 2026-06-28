@@ -1,17 +1,14 @@
-const { verify } = require('../services/tokenService');
-
 function adminAuth(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  const payload = verify(token);
-
-  if (!payload || payload.role !== 'ADMIN') {
+  if (!req.user) {
     return res.status(401).json({ error: 'Acesso administrativo nao autorizado.' });
   }
-
-  req.user = payload;
+  if (req.user.must_change_password) {
+    return res.status(403).json({ error: 'Troca de senha obrigatoria.', code: 'PASSWORD_CHANGE_REQUIRED' });
+  }
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Acesso administrativo nao autorizado.' });
+  }
   next();
 }
 
 module.exports = { adminAuth };
-

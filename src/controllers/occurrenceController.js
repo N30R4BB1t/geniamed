@@ -6,17 +6,16 @@ const { getOccurrenceTypes, inferPriority } = require('../services/triageService
 const createSchema = z.object({
   patientId: z.string().uuid(),
   unitId: z.string().uuid(),
-  need: z.string(),
-  category: z.string().optional().nullable(),
-  subcategory: z.string().optional().nullable(),
-  details: z.string().optional().nullable(),
+  need: z.enum(['EMERGENCIA', 'CONSULTA', 'AGENDAMENTO', 'RETORNO', 'EXAME', 'OUTRO']),
+  category: z.string().max(80).optional().nullable(),
+  subcategory: z.string().max(100).optional().nullable(),
+  details: z.string().max(2000).optional().nullable(),
   latitude: z.number().optional().nullable(),
   longitude: z.number().optional().nullable()
 });
 
 const statusSchema = z.object({
   status: z.enum(['EM_PREPARO', 'AGUARDANDO', 'EM_ATENDIMENTO', 'FINALIZADA', 'CANCELADA']),
-  actor: z.string().max(120).optional(),
   notes: z.string().max(500).optional().nullable()
 });
 
@@ -114,7 +113,7 @@ async function createOccurrence(req, res, next) {
 async function updateStatus(req, res, next) {
   try {
     const input = statusSchema.parse(req.body);
-    const actor = input.actor || 'Dashboard operacional';
+    const actor = req.user.username;
 
     const result = await db.transaction(async (client) => {
       const currentResult = await client.query(

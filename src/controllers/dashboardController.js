@@ -71,7 +71,11 @@ async function listOccurrences(req, res, next) {
           o.created_at ASC`
     );
 
-    res.json({ occurrences: result.rows });
+    const occurrences = req.user.role === 'RECEPCAO'
+      ? result.rows.map(({ allergies, chronic_conditions, current_medications, blood_type, ...item }) => item)
+      : result.rows;
+
+    res.json({ occurrences });
   } catch (error) {
     next(error);
   }
