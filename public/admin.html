@@ -17,20 +17,21 @@
       <a href="/">Dashboard</a>
       <a href="/prontuario.html">Prontuario</a>
       <a class="active" href="/admin.html">Admin</a>
+      <button id="voiceButton" class="secondary" type="button">Ativar voz</button>
     </nav>
   </header>
 
   <main class="admin-shell">
-    <section id="loginPanel" class="panel admin-login">
+    <section id="loginPanel" class="panel admin-login hidden">
       <h1>Acesso restrito</h1>
       <form id="loginForm" class="form-grid">
         <label>
           Usuario
-          <input name="username" value="Admin" autocomplete="username" required>
+          <input name="username" autocomplete="username" required>
         </label>
         <label>
           Senha
-          <input name="password" type="password" value="Admin123" autocomplete="current-password" required>
+          <input name="password" type="password" autocomplete="current-password" required>
         </label>
         <button>Entrar</button>
       </form>
@@ -171,7 +172,7 @@
               <option value="MEDICO">Medico</option>
             </select>
           </label>
-          <label>Senha <input name="password" type="password" placeholder="Obrigatoria no cadastro"></label>
+          <label>Senha <input name="password" type="password" minlength="12" placeholder="12+ caracteres, com numero e simbolo"></label>
           <label class="check-row"><input name="active" type="checkbox" checked> Usuario ativo</label>
           <div class="form-actions">
             <button>Salvar usuario</button>
@@ -298,6 +299,8 @@
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/auth-client.js"></script>
+  <script src="/voice-client.js"></script>
   <script src="/admin.js"></script>
 </body>
 </html>

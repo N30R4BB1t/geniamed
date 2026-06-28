@@ -3,6 +3,7 @@ const adminPanel = document.querySelector('#adminPanel');
 const loginForm = document.querySelector('#loginForm');
 const loginMessage = document.querySelector('#loginMessage');
 const logoutButton = document.querySelector('#logoutButton');
+const voiceButton = document.querySelector('#voiceButton');
 
 const menuUnits = document.querySelector('#menuUnits');
 const menuCapabilities = document.querySelector('#menuCapabilities');
@@ -49,15 +50,18 @@ let trackingMap;
 let trackingMarker;
 let trackingUnitMarker;
 let trackingLine;
-let token = localStorage.getItem('adminToken');
-let adminUser = JSON.parse(localStorage.getItem('adminUser') || 'null');
+let adminUser = null;
 
-function boot() {
-  if (token && adminUser) {
-    showAdmin();
-    loadAll();
-  }
+async function boot() {
+  adminUser = await GeniamedAuth.start({ roles: ['ADMIN'] });
+  if (!adminUser) return;
+  GeniamedVoice.configure(voiceButton);
+  GeniamedVoice.connectOperationalAlerts();
+  showAdmin();
+  await loadAll();
 }
+
+voiceButton.addEventListener('click', () => GeniamedVoice.toggle());
 
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -79,12 +83,7 @@ loginForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  token = data.token;
-  adminUser = data.user;
-  localStorage.setItem('adminToken', token);
-  localStorage.setItem('adminUser', JSON.stringify(adminUser));
-  showAdmin();
-  await loadAll();
+  window.location.reload();
 });
 
 menuUnits.addEventListener('click', () => showSection('units'));
@@ -98,12 +97,7 @@ menuTracking.addEventListener('click', async () => {
 });
 
 logoutButton.addEventListener('click', () => {
-  localStorage.removeItem('adminToken');
-  localStorage.removeItem('adminUser');
-  token = null;
-  adminUser = null;
-  loginPanel.classList.remove('hidden');
-  adminPanel.classList.add('hidden');
+  GeniamedAuth.logout();
 });
 
 unitForm.addEventListener('submit', async (event) => {
@@ -646,8 +640,24 @@ function updateTrackingMap(patientLat, patientLng, unitLat, unitLng) {
   trackingMarker?.remove();
   trackingUnitMarker?.remove();
   trackingLine?.remove();
-  trackingMarker = L.marker([patientLat, patientLng]).addTo(trackingMap).bindPopup('Paciente simulado');
-  trackingUnitMarker = L.marker([unitLat, unitLng]).addTo(trackingMap).bindPopup('Unidade atual');
+  trackingMarker = L.marker([patientLat, patientLng], {
+    icon: L.divIcon({
+      className: 'map-div-icon',
+      html: '<span class="patient-map-marker priority-MEDIA" aria-hidden="true"></span>',
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+      popupAnchor: [0, -16]
+    })
+  }).addTo(trackingMap).bindPopup('Paciente simulado');
+  trackingUnitMarker = L.marker([unitLat, unitLng], {
+    icon: L.divIcon({
+      className: 'map-div-icon',
+      html: '<span class="unit-map-marker" aria-hidden="true">+</span>',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      popupAnchor: [0, -18]
+    })
+  }).addTo(trackingMap).bindPopup('Unidade atual');
   trackingLine = L.polyline([[patientLat, patientLng], [unitLat, unitLng]], { color: '#0f766e' }).addTo(trackingMap);
   trackingMap.fitBounds([[patientLat, patientLng], [unitLat, unitLng]], { padding: [30, 30], maxZoom: 15 });
 }
@@ -678,7 +688,7 @@ async function ensureAuthorized(response) {
 }
 
 function authHeaders(withJson = true) {
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers = {};
   if (withJson) headers['Content-Type'] = 'application/json';
   return headers;
 }

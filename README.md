@@ -17,24 +17,24 @@ npm run dev
 Dashboard:
 
 ```text
-http://localhost:3000
+http://localhost:3001
 ```
 
 Prontuario:
 
 ```text
-http://localhost:3000/prontuario.html
+http://localhost:3001/prontuario.html
 ```
 
 Area administrativa:
 
 ```text
-http://localhost:3000/admin.html
+http://localhost:3001/admin.html
 ```
 
 ## Endpoints principais
 
-Login inicial:
+Login inicial academico. A troca da senha sera obrigatoria:
 
 ```http
 POST /api/auth/login
@@ -46,16 +46,18 @@ Content-Type: application/json
 }
 ```
 
-CRUD administrativo de unidades:
+As interfaces web usam cookie de sessao `HttpOnly`. Nao salve credenciais no `localStorage`.
+
+CRUD administrativo de unidades, com cookie de sessao e token CSRF:
 
 ```http
 GET /api/admin/units
-Authorization: Bearer TOKEN_DO_LOGIN
+X-CSRF-Token: TOKEN_RETORNADO_PELA_SESSAO
 ```
 
 ```http
 POST /api/admin/units
-Authorization: Bearer TOKEN_DO_LOGIN
+X-CSRF-Token: TOKEN_RETORNADO_PELA_SESSAO
 Content-Type: application/json
 
 {
@@ -195,6 +197,7 @@ Content-Type: application/json
 
 ```http
 POST /api/occurrences
+Authorization: Bearer TOKEN_TEMPORARIO_RETORNADO_PELO_QR
 Content-Type: application/json
 
 {
@@ -221,7 +224,10 @@ No Render, configure as variaveis:
 NODE_ENV=production
 DATABASE_URL=URL_DO_POSTGRES_DO_RENDER
 DB_SSL=true
-AUTH_SECRET=uma_chave_longa_e_segura
+DB_SSL_REJECT_UNAUTHORIZED=true
+AUTH_SECRET=uma_chave_aleatoria_com_no_minimo_32_caracteres
+RENDER_EXTERNAL_URL=https://geniamed.onrender.com
+CORS_ORIGIN=https://geniamed.onrender.com
 PORT=3000
 ```
 
@@ -238,3 +244,5 @@ npm start
 ```
 
 O `npm start` ja executa as migrations antes de subir o servidor.
+
+Consulte tambem `../SECURITY.md`.

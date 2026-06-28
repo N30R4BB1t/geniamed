@@ -11,19 +11,28 @@ ON CONFLICT (username) DO NOTHING;
 INSERT INTO patients (id, full_name, cpf, birth_date, sex, phone, email)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'Maria Silva Santos', '123.456.789-00', '1984-05-12', 'F', '+55 11 99999-0001', 'maria@example.com'),
-  ('22222222-2222-2222-2222-222222222222', 'Joao Pereira Lima', '987.654.321-00', '1976-09-03', 'M', '+55 11 99999-0002', 'joao@example.com')
+  ('22222222-2222-2222-2222-222222222222', 'Joao Pereira Lima', '987.654.321-00', '1976-09-03', 'M', '+55 11 99999-0002', 'joao@example.com'),
+  ('33333333-3333-3333-3333-333333333333', 'Jose da Silva', '074.567.890-12', '1978-03-15', 'M', '+55 11 99999-0003', 'jose@example.com'),
+  ('44444444-4444-4444-4444-444444444444', 'Luiz Carlos', '079.876.543-21', '1976-09-03', 'M', '+55 11 99999-0004', 'luiz@example.com'),
+  ('55555555-5555-5555-5555-555555555555', 'Lucas Oliveira', '075.432.109-87', '1976-09-03', 'M', '+55 11 99999-0005', 'lucas@example.com')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO patient_qr_tokens (patient_id, token_hash, active)
 VALUES
   ('11111111-1111-1111-1111-111111111111', encode(digest('CARTAO-MARIA-001', 'sha256'), 'hex'), TRUE),
-  ('22222222-2222-2222-2222-222222222222', encode(digest('CARTAO-JOAO-001', 'sha256'), 'hex'), TRUE)
+  ('22222222-2222-2222-2222-222222222222', encode(digest('CARTAO-JOAO-001', 'sha256'), 'hex'), TRUE),
+  ('33333333-3333-3333-3333-333333333333', encode(digest('CARTAO-JOSE-001', 'sha256'), 'hex'), TRUE),
+  ('44444444-4444-4444-4444-444444444444', encode(digest('CARTAO-LUIZ-001', 'sha256'), 'hex'), TRUE),
+  ('55555555-5555-5555-5555-555555555555', encode(digest('CARTAO-LUCAS-001', 'sha256'), 'hex'), TRUE)
 ON CONFLICT (token_hash) DO NOTHING;
 
 INSERT INTO hospital_histories (patient_id, allergies, chronic_conditions, current_medications, blood_type, notes)
 VALUES
   ('11111111-1111-1111-1111-111111111111', 'Dipirona', 'Hipertensao', 'Losartana 50mg', 'O+', 'Paciente relata historico familiar cardiovascular.'),
-  ('22222222-2222-2222-2222-222222222222', 'Nenhuma conhecida', 'Diabetes tipo 2', 'Metformina 850mg', 'A+', 'Acompanhamento endocrinologico regular.')
+  ('22222222-2222-2222-2222-222222222222', 'Nenhuma conhecida', 'Diabetes tipo 2', 'Metformina 850mg', 'A+', 'Acompanhamento endocrinologico regular.'),
+  ('33333333-3333-3333-3333-333333333333', 'Penicilina', 'Asma', 'Salbutamol spray', 'B+', 'Episodios de asma controlados com medicacao.'),
+  ('44444444-4444-4444-4444-444444444444', 'Nenhuma conhecida', 'Nenhuma', 'Nenhuma', 'AB+', 'Paciente saudavel sem condicoes cronicas.'),
+  ('55555555-5555-5555-5555-555555555555', 'Aspirina', 'Hipotireoidismo', 'Levotiroxina 75mcg', 'O-', 'Acompanhamento endocrinologico regular.')
 ON CONFLICT (patient_id) DO NOTHING;
 
 INSERT INTO units (id, name, address, city, state, phone, latitude, longitude)

@@ -772,8 +772,15 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-loadData()
+document.querySelector('#logoutButton').addEventListener('click', () => GeniamedAuth.logout());
+
+GeniamedAuth.start({ roles: ['ADMIN', 'MEDICO', 'ENFERMAGEM'] })
+  .then((user) => {
+    if (!user) return null;
+    return loadData();
+  })
   .then(async () => {
+    if (!GeniamedAuth.user) return;
     const params = new URLSearchParams(window.location.search);
     const patientId = params.get('patientId');
     const view = params.get('view');

@@ -9,12 +9,13 @@ const dialogTitle = document.querySelector('#dialogTitle');
 const dialogBody = document.querySelector('#dialogBody');
 const closeDialog = document.querySelector('#closeDialog');
 const toast = document.querySelector('#dashboardToast');
+const logoutButton = document.querySelector('#logoutButton');
 
 let occurrences = [];
 let map;
 let mapLayer;
 let busyOccurrenceId = null;
-let voiceEnabled = false;
+let voiceEnabled = localStorage.getItem('geniamed.voice.enabled') === 'true';
 let selectedVoice = null;
 
 const averageUrbanSpeedKmH = 28;
@@ -124,8 +125,7 @@ async function advanceStatus(id, status) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        status,
-        actor: 'Equipe do dashboard'
+        status
       })
     });
 
@@ -168,14 +168,20 @@ function renderMap() {
     mappedOccurrences += 1;
 
     if (patientPoint) {
-      L.marker(patientPoint, { title: `Paciente: ${item.patient_name}` })
+      L.marker(patientPoint, {
+        title: `Paciente: ${item.patient_name}`,
+        icon: patientMarkerIcon(item.priority)
+      })
         .bindPopup(`<strong>Paciente</strong><br>${escapeHtml(item.patient_name)}<br>${escapeHtml(item.need)} · ${escapeHtml(item.priority)}`)
         .addTo(mapLayer);
       visiblePoints.push(patientPoint);
     }
 
     if (unitPoint) {
-      L.marker(unitPoint, { title: `Unidade: ${item.unit_name}` })
+      L.marker(unitPoint, {
+        title: `Unidade: ${item.unit_name}`,
+        icon: unitMarkerIcon()
+      })
         .bindPopup(`<strong>Unidade escolhida</strong><br>${escapeHtml(item.unit_name || 'Unidade')}<br>${escapeHtml(item.unit_address || '')}`)
         .addTo(mapLayer);
       visiblePoints.push(unitPoint);
@@ -289,6 +295,7 @@ function selectPortugueseVoice() {
 function toggleVoice() {
   if (!('speechSynthesis' in window)) return;
   voiceEnabled = !voiceEnabled;
+  localStorage.setItem('geniamed.voice.enabled', String(voiceEnabled));
   updateVoiceButton();
 
   if (voiceEnabled) {
@@ -387,9 +394,30 @@ function toRad(value) {
 
 function priorityColor(priority) {
   if (priority === 'CRITICA') return '#b42318';
-  if (priority === 'ALTA') return '#b54708';
-  if (priority === 'MEDIA') return '#026aa2';
-  return '#0f766e';
+  if (priority === 'ALTA') return '#dc2626';
+  if (priority === 'MEDIA') return '#eab308';
+  return '#16a34a';
+}
+
+function patientMarkerIcon(priority) {
+  const level = ['CRITICA', 'ALTA', 'MEDIA', 'BAIXA'].includes(priority) ? priority : 'BAIXA';
+  return L.divIcon({
+    className: 'map-div-icon',
+    html: `<span class="patient-map-marker priority-${level}" aria-hidden="true"></span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -16]
+  });
+}
+
+function unitMarkerIcon() {
+  return L.divIcon({
+    className: 'map-div-icon',
+    html: '<span class="unit-map-marker" aria-hidden="true">+</span>',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -18]
+  });
 }
 
 function formatDateTime(value) {
@@ -413,37 +441,44 @@ refreshButton.addEventListener('click', loadOccurrences);
 voiceButton.addEventListener('click', toggleVoice);
 closeDialog.addEventListener('click', () => dialog.close());
 
-const events = new EventSource('/api/dashboard/events');
-events.addEventListener('occurrence-created', (event) => {
-  const data = JSON.parse(event.data);
-  speakAlert(
-    `Nova ocorrencia. Paciente ${data.patient_name}. Problema informado: ${spokenProblem(data)}. Unidade escolhida: ${data.unit_name || 'nao definida'}.`,
-    true
-  );
-  loadOccurrences();
-});
-events.addEventListener('occurrence-updated', loadOccurrences);
-events.addEventListener('patient-location-updated', loadOccurrences);
-events.addEventListener('unit-change-responded', loadOccurrences);
-events.addEventListener('patient-eta-alert', (event) => {
-  const data = JSON.parse(event.data);
-  speakAlert(`Previsao atualizada. Paciente ${data.patientName}, chegada em aproximadamente ${data.etaMinutes} minutos na unidade ${data.unitName}.`);
-});
-events.addEventListener('patient-proximity-alert', (event) => {
-  const data = JSON.parse(event.data);
-  showToast(`${data.patientName} esta a aproximadamente ${data.etaMinutes} min de ${data.unitName}.`, 'success');
-  speakAlert(`Atencao. O paciente ${data.patientName} esta a aproximadamente ${data.etaMinutes} minutos da unidade ${data.unitName}.`, true);
-});
-events.addEventListener('patient-arrival-alert', (event) => {
-  const data = JSON.parse(event.data);
-  showToast(`${data.patientName} chegou a ${data.unitName}.`, 'success');
-  speakAlert(`Atencao. O paciente ${data.patientName} chegou a unidade ${data.unitName}. Problema informado: ${spokenProblem(data)}.`, true);
-});
-events.addEventListener('unit-change-suggested', (event) => {
-  const data = JSON.parse(event.data);
-  if (!data.suggestion) return;
-  showToast(`${data.patientName}: sugestao de redirecionamento para ${data.suggestion.suggestedUnitName}.`, 'success');
-  speakAlert(`Alerta de trajeto. O paciente ${data.patientName} pode estar se direcionando para outra unidade. Sugestao: ${data.suggestion.suggestedUnitName}.`);
-});
+function connectEvents() {
+  const events = new EventSource('/api/dashboard/events');
+  events.addEventListener('occurrence-created', (event) => {
+    const data = JSON.parse(event.data);
+    speakAlert(
+      `Nova ocorrencia. Paciente ${data.patient_name}. Problema informado: ${spokenProblem(data)}. Unidade escolhida: ${data.unit_name || 'nao definida'}.`,
+      true
+    );
+    loadOccurrences();
+  });
+  events.addEventListener('occurrence-updated', loadOccurrences);
+  events.addEventListener('patient-location-updated', loadOccurrences);
+  events.addEventListener('unit-change-responded', loadOccurrences);
+  events.addEventListener('patient-eta-alert', (event) => {
+    const data = JSON.parse(event.data);
+    speakAlert(`Previsao atualizada. Paciente ${data.patientName}, chegada em aproximadamente ${data.etaMinutes} minutos na unidade ${data.unitName}.`);
+  });
+  events.addEventListener('patient-proximity-alert', (event) => {
+    const data = JSON.parse(event.data);
+    showToast(`${data.patientName} esta a aproximadamente ${data.etaMinutes} min de ${data.unitName}.`, 'success');
+    speakAlert(`Atencao. O paciente ${data.patientName} esta a aproximadamente ${data.etaMinutes} minutos da unidade ${data.unitName}.`, true);
+  });
+  events.addEventListener('patient-arrival-alert', (event) => {
+    const data = JSON.parse(event.data);
+    showToast(`${data.patientName} chegou a ${data.unitName}.`, 'success');
+    speakAlert(`Atencao. O paciente ${data.patientName} chegou a unidade ${data.unitName}. Problema informado: ${spokenProblem(data)}.`, true);
+  });
+  events.addEventListener('unit-change-suggested', (event) => {
+    const data = JSON.parse(event.data);
+    if (!data.suggestion) return;
+    showToast(`${data.patientName}: sugestao de redirecionamento para ${data.suggestion.suggestedUnitName}.`, 'success');
+    speakAlert(`Alerta de trajeto. O paciente ${data.patientName} pode estar se direcionando para outra unidade. Sugestao: ${data.suggestion.suggestedUnitName}.`);
+  });
+}
 
-loadOccurrences();
+logoutButton.addEventListener('click', () => GeniamedAuth.logout());
+GeniamedAuth.start().then((user) => {
+  if (!user) return;
+  loadOccurrences();
+  connectEvents();
+});
