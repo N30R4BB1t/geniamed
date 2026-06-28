@@ -224,7 +224,7 @@ No Render, configure as variaveis:
 NODE_ENV=production
 DATABASE_URL=URL_DO_POSTGRES_DO_RENDER
 DB_SSL=true
-DB_SSL_REJECT_UNAUTHORIZED=true
+DB_SSL_REJECT_UNAUTHORIZED=false
 AUTH_SECRET=uma_chave_aleatoria_com_no_minimo_32_caracteres
 RENDER_EXTERNAL_URL=https://geniamed.onrender.com
 CORS_ORIGIN=https://geniamed.onrender.com
