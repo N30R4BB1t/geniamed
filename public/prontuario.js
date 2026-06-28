@@ -50,6 +50,14 @@ const evolutionsList = document.querySelector('#evolutionsList');
 const evolutionForm = document.querySelector('#evolutionForm');
 const attachmentsList = document.querySelector('#attachmentsList');
 const attachmentForm = document.querySelector('#attachmentForm');
+const symptomGroupsEl = document.querySelector('#symptomGroups');
+const selectedSymptomsBox = document.querySelector('#selectedSymptomsBox');
+const clearSymptomsButton = document.querySelector('#clearSymptomsButton');
+const refreshCidSuggestionsButton = document.querySelector('#refreshCidSuggestions');
+const cidSuggestionsEl = document.querySelector('#cidSuggestions');
+const cidSuggestionSymptomsEl = document.querySelector('#cidSuggestionSymptoms');
+const liveCidSummary = document.querySelector('#liveCidSummary');
+const liveCidSuggestionsEl = document.querySelector('#liveCidSuggestions');
 
 let patients = [];
 let occurrences = [];
@@ -59,7 +67,12 @@ let consultations = [];
 let prescriptions = [];
 let evolutions = [];
 let attachments = [];
+let symptomGroups = [];
+let selectedSymptomIds = new Set();
+let expandedSymptomGroupCodes = new Set();
 let currentPrescriptionItems = [];
+let liveSuggestionTimer = null;
+let lastConsultationCidSuggestions = [];
 
 const viewLabels = {
   overview: 'Dashboard',
@@ -157,6 +170,16 @@ consultationForm.addEventListener('submit', async (event) => {
   setView('consultations', 'Consultas');
 });
 
+clearSymptomsButton.addEventListener('click', () => {
+  selectedSymptomIds = new Set();
+  renderSymptomGroups();
+  renderSelectedSymptoms();
+  renderLiveCidSuggestions();
+});
+
+consultationForm.elements.anamnesisId.addEventListener('change', renderCidSuggestionsForConsultation);
+refreshCidSuggestionsButton.addEventListener('click', renderCidSuggestionsForConsultation);
+
 document.querySelector('#addPrescriptionItem').addEventListener('click', () => {
   const form = prescriptionForm.elements;
   if (!form.medication.value || !form.dose.value || !form.form.value || !form.route.value || !form.frequency.value || !form.duration.value) {
@@ -232,7 +255,8 @@ async function loadData() {
     consultationsResponse,
     prescriptionsResponse,
     evolutionsResponse,
-    attachmentsResponse
+    attachmentsResponse,
+    symptomsResponse
   ] = await Promise.all([
     fetch('/api/patients'),
     fetch('/api/dashboard/occurrences'),
@@ -241,7 +265,8 @@ async function loadData() {
     fetch('/api/clinical/consultations'),
     fetch('/api/clinical/prescriptions'),
     fetch('/api/clinical/evolutions'),
-    fetch('/api/clinical/attachments')
+    fetch('/api/clinical/attachments'),
+    fetch('/api/clinical/symptoms')
   ]);
 
   const patientsData = await patientsResponse.json();
@@ -252,6 +277,7 @@ async function loadData() {
   const prescriptionsData = await prescriptionsResponse.json();
   const evolutionsData = await evolutionsResponse.json();
   const attachmentsData = await attachmentsResponse.json();
+  const symptomsData = await symptomsResponse.json();
 
   patients = patientsData.patients || [];
   occurrences = occurrencesData.occurrences || [];
@@ -261,8 +287,11 @@ async function loadData() {
   prescriptions = (prescriptionsData.prescriptions || []).map(mapPrescription);
   evolutions = (evolutionsData.evolutions || []).map(mapEvolution);
   attachments = (attachmentsData.attachments || []).map(mapAttachment);
+  symptomGroups = symptomsData.groups || [];
 
   populatePatientSelects();
+  renderSymptomGroups();
+  renderSelectedSymptoms();
   renderPatientsList();
   renderAllLocal();
 }
@@ -386,6 +415,17 @@ function renderRecord(patient, history) {
 function openForm(view, title) {
   populatePatientSelects();
   populateLinkedSelects();
+  if (view === 'anamnesisForm') {
+    selectedSymptomIds = new Set();
+    renderSymptomGroups();
+    renderSelectedSymptoms();
+    renderLiveCidSuggestions();
+  }
+  if (view === 'consultationForm') {
+    consultationForm.elements.cid10Id.value = '';
+    cidSuggestionsEl.innerHTML = '';
+    cidSuggestionSymptomsEl.textContent = 'Selecione uma anamnese para carregar sintomas.';
+  }
   if (view === 'prescriptionForm') {
     currentPrescriptionItems = [];
     renderPrescriptionPreview();
@@ -465,6 +505,152 @@ function renderPrescriptionPreview() {
   `).join('');
 }
 
+function renderSymptomGroups() {
+  if (!symptomGroupsEl) return;
+  symptomGroupsEl.innerHTML = symptomGroups.length
+    ? symptomGroups.map((group) => `
+      <section class="symptom-group ${isSymptomGroupExpanded(group) ? 'expanded' : ''}">
+        <button class="symptom-group-toggle" type="button" onclick="toggleSymptomGroup('${escapeHtml(group.code)}')">
+          <span>
+            <strong>${escapeHtml(group.name)}</strong>
+            <small>${escapeHtml(group.description || '')}</small>
+          </span>
+          <em>${selectedCountForGroup(group)} selecionado(s)</em>
+        </button>
+        <div class="symptom-chip-row ${isSymptomGroupExpanded(group) ? '' : 'hidden'}">
+          ${group.symptoms.map((symptom) => `
+            <button class="symptom-chip ${selectedSymptomIds.has(symptom.id) ? 'selected' : ''}" type="button" onclick="toggleSymptom('${symptom.id}')">
+              ${escapeHtml(symptom.name)}
+            </button>
+          `).join('')}
+        </div>
+      </section>
+    `).join('')
+    : '<p class="hint">Nenhum sintoma cadastrado.</p>';
+}
+
+function isSymptomGroupExpanded(group) {
+  return expandedSymptomGroupCodes.has(group.code) || selectedCountForGroup(group) > 0;
+}
+
+function selectedCountForGroup(group) {
+  return group.symptoms.filter((symptom) => selectedSymptomIds.has(symptom.id)).length;
+}
+
+function toggleSymptomGroup(code) {
+  if (expandedSymptomGroupCodes.has(code)) {
+    expandedSymptomGroupCodes.delete(code);
+  } else {
+    expandedSymptomGroupCodes.add(code);
+  }
+  renderSymptomGroups();
+}
+
+function renderSelectedSymptoms() {
+  const selected = selectedSymptoms();
+  selectedSymptomsBox.textContent = selected.length
+    ? selected.map((symptom) => symptom.name).join(', ')
+    : 'Nenhum sintoma selecionado.';
+}
+
+function toggleSymptom(id) {
+  if (selectedSymptomIds.has(id)) {
+    selectedSymptomIds.delete(id);
+  } else {
+    selectedSymptomIds.add(id);
+  }
+  renderSymptomGroups();
+  renderSelectedSymptoms();
+  scheduleLiveCidSuggestions();
+}
+
+function selectedSymptoms() {
+  return symptomGroups.flatMap((group) => group.symptoms).filter((symptom) => selectedSymptomIds.has(symptom.id));
+}
+
+function scheduleLiveCidSuggestions() {
+  clearTimeout(liveSuggestionTimer);
+  liveSuggestionTimer = setTimeout(renderLiveCidSuggestions, 250);
+}
+
+async function renderLiveCidSuggestions() {
+  const symptomIds = Array.from(selectedSymptomIds);
+  if (!liveCidSuggestionsEl || !liveCidSummary) return;
+  if (symptomIds.length === 0) {
+    liveCidSummary.textContent = 'Selecione sintomas para calcular sugestoes por pontuacao.';
+    liveCidSuggestionsEl.innerHTML = '';
+    return;
+  }
+
+  liveCidSummary.textContent = 'Calculando sugestoes pela base CID importada...';
+  const response = await postJson('/api/clinical/cid10/suggestions', { symptomIds });
+  if (!response) return;
+  const suggestions = response.suggestions || [];
+  liveCidSummary.textContent = `${suggestions.length} sugestao(oes) encontrada(s). Sugestoes para apoio profissional. Nao substituem avaliacao clinica, diagnostico ou conduta medica.`;
+  liveCidSuggestionsEl.innerHTML = renderCidSuggestionCards(suggestions, { selectable: false });
+}
+
+async function renderCidSuggestionsForConsultation() {
+  const anamnesisId = consultationForm.elements.anamnesisId.value;
+  const anamnesis = anamneses.find((item) => item.id === anamnesisId);
+  const symptomIds = (anamnesis?.symptoms || []).map((symptom) => symptom.id);
+
+  if (symptomIds.length === 0) {
+    cidSuggestionSymptomsEl.textContent = 'A anamnese selecionada nao possui sintomas marcados.';
+    cidSuggestionsEl.innerHTML = '';
+    lastConsultationCidSuggestions = [];
+    return;
+  }
+
+  cidSuggestionSymptomsEl.textContent = anamnesis.symptoms.map((symptom) => symptom.name).join(', ');
+  cidSuggestionsEl.innerHTML = '<p class="hint">Buscando sugestoes...</p>';
+
+  const response = await postJson('/api/clinical/cid10/suggestions', { symptomIds });
+  if (!response) return;
+
+  const suggestions = response.suggestions || [];
+  lastConsultationCidSuggestions = suggestions;
+  cidSuggestionsEl.innerHTML = renderCidSuggestionCards(suggestions, { selectable: true });
+}
+
+function renderCidSuggestionCards(suggestions, options = {}) {
+  if (!suggestions.length) {
+    return '<p class="hint">Nenhum CID sugerido com a base atual. Importe CID-10 no Admin ou ajuste os sintomas.</p>';
+  }
+
+  return suggestions.map((item) => {
+    const action = options.selectable ? ` onclick="selectCidSuggestion('${item.id}')"` : '';
+    const tag = options.selectable ? 'button' : 'article';
+    const typeAttr = options.selectable ? ' type="button"' : '';
+    const related = item.relatedSymptoms?.length ? item.relatedSymptoms.join(', ') : '-';
+    const terms = item.matchedTerms?.length ? item.matchedTerms.join(', ') : '-';
+    const origins = item.origins?.length ? item.origins.join(', ') : '-';
+    return `
+      <${tag} class="cid-suggestion"${action}${typeAttr}>
+        <div>
+          <strong>${escapeHtml(item.code)} - ${escapeHtml(item.description)}</strong>
+          <span>Tipo: ${escapeHtml(String(item.kind || '').toLowerCase())}</span>
+          <small><strong>Sintomas relacionados:</strong> ${escapeHtml(related)}</small>
+          <small><strong>Motivos/termos:</strong> ${escapeHtml(terms)}</small>
+          <small><strong>Origem:</strong> ${escapeHtml(origins)}</small>
+        </div>
+        <em>Pontuacao ${Number(item.score || 0)}</em>
+      </${tag}>
+    `;
+  }).join('');
+}
+
+function selectCidSuggestion(id) {
+  const allSuggestions = Array.from(cidSuggestionsEl.querySelectorAll('.cid-suggestion'));
+  allSuggestions.forEach((element) => element.classList.remove('selected'));
+  const suggestion = lastConsultationCidSuggestions.find((item) => item.id === id);
+  if (!suggestion) return;
+  consultationForm.elements.cid10Id.value = id;
+  consultationForm.elements.cid.value = `${suggestion.code} - ${suggestion.description}`;
+  const selected = allSuggestions.find((element) => element.getAttribute('onclick')?.includes(id));
+  selected?.classList.add('selected');
+}
+
 function activityItem(item) {
   const type = item.type || item.need || 'Registro';
   return `
@@ -480,8 +666,11 @@ function activityItem(item) {
 
 function summaryFor(record, type) {
   if (type === 'Triagem') return record.data.complaint || 'Sinais vitais registrados.';
-  if (type === 'Anamnese') return record.data.complaint || record.data.currentHistory || 'Rascunho de anamnese.';
-  if (type === 'Consulta') return record.data.cid || record.data.status || 'Registro de consulta.';
+  if (type === 'Anamnese') {
+    const symptoms = (record.symptoms || []).map((symptom) => symptom.name).join(', ');
+    return symptoms || record.data.complaint || record.data.currentHistory || 'Rascunho de anamnese.';
+  }
+  if (type === 'Consulta') return record.data.cidCode || record.data.cid || record.data.status || 'Registro de consulta.';
   if (type === 'Prescricao') return `${record.items?.length || 0} item(ns) no rascunho.`;
   if (type === 'Evolucao') return record.data.assessment || record.data.notes || record.data.plan || 'Registro de evolucao.';
   if (type === 'Anexo') return record.data.title || record.data.fileName || 'Documento anexado.';
@@ -512,6 +701,7 @@ function formToAnamnesis() {
     patientId: data.patientId,
     complaint: data.complaint,
     currentHistory: data.currentHistory,
+    symptomIds: Array.from(selectedSymptomIds),
     personalHistory: data.personalHistory || null,
     surgicalHistory: data.surgicalHistory || null,
     allergies: data.allergies || null,
@@ -531,6 +721,7 @@ function formToConsultation() {
     triageId: data.triageId || null,
     anamnesisId: data.anamnesisId || null,
     status: data.status,
+    cid10Id: data.cid10Id || null,
     cid: data.cid || null,
     conduct: data.conduct || null,
     returnGuidance: data.returnGuidance || null
@@ -623,7 +814,8 @@ function mapAnamnesis(row) {
       habits: row.habits,
       systemsReview: row.systems_review,
       physicalExam: row.physical_exam
-    }
+    },
+    symptoms: row.symptoms || []
   };
 }
 
@@ -638,7 +830,10 @@ function mapConsultation(row) {
       triageId: row.triage_id,
       anamnesisId: row.anamnesis_id,
       status: row.status,
+      cid10Id: row.cid10_id,
       cid: row.cid,
+      cidCode: row.cid_code,
+      cidDescription: row.cid_description,
       conduct: row.conduct,
       returnGuidance: row.return_guidance
     }

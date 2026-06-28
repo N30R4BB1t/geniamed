@@ -198,6 +198,7 @@
               <strong>SECOES</strong>
               <a href="#anam-ident">Identificacao</a>
               <a href="#anam-hda">Historia atual</a>
+              <a href="#anam-sintomas">Sintomas</a>
               <a href="#anam-antecedentes">Antecedentes</a>
               <a href="#anam-habitos">Habitos e familia</a>
               <a href="#anam-exame">Revisao e exame</a>
@@ -214,6 +215,22 @@
               <section id="anam-hda" class="form-section-card">
                 <h2>Historia da doenca atual</h2>
                 <label>Historia da doenca atual * <textarea name="currentHistory" required></textarea></label>
+              </section>
+              <section id="anam-sintomas" class="form-section-card">
+                <div class="record-card-head">
+                  <div>
+                    <h2>Sintomas relatados</h2>
+                    <span>Selecione os sintomas apresentados pelo paciente para apoiar sugestoes de CID na consulta.</span>
+                  </div>
+                  <button id="clearSymptomsButton" class="secondary" type="button">Limpar selecao</button>
+                </div>
+                <div id="selectedSymptomsBox" class="symptom-selection-box">Nenhum sintoma selecionado.</div>
+                <div id="symptomGroups" class="symptom-groups"></div>
+                <div class="symptom-live-results">
+                  <h3>Possiveis CIDs relacionados</h3>
+                  <p id="liveCidSummary" class="hint">Selecione sintomas para calcular sugestoes por pontuacao.</p>
+                  <div id="liveCidSuggestions" class="cid-suggestions"></div>
+                </div>
               </section>
               <section id="anam-antecedentes" class="form-section-card">
                 <h2>Antecedentes</h2>
@@ -285,7 +302,19 @@
               </label>
               <label>Triagem vinculada <select name="triageId"></select></label>
               <label>Anamnese vinculada <select name="anamnesisId"></select></label>
+              <section class="wide cid-suggestion-panel">
+                <div class="record-card-head">
+                  <div>
+                    <h2>Sugestoes de CID por sintomas/anamnese</h2>
+                    <span>Use como apoio a codificacao. A decisao final permanece profissional.</span>
+                  </div>
+                  <button id="refreshCidSuggestions" class="secondary" type="button">Atualizar sugestoes</button>
+                </div>
+                <div id="cidSuggestionSymptoms" class="symptom-selection-box">Selecione uma anamnese para carregar sintomas.</div>
+                <div id="cidSuggestions" class="cid-suggestions"></div>
+              </section>
               <label class="wide">Hipotese/diagnostico CID-10 <input name="cid" placeholder="Buscar por codigo ou descricao"></label>
+              <input name="cid10Id" type="hidden">
               <label class="wide">Conduta <textarea name="conduct"></textarea></label>
               <label class="wide">Orientacoes de retorno <textarea name="returnGuidance"></textarea></label>
               <div class="form-actions wide"><button>Salvar registro</button></div>

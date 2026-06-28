@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const controller = require('../controllers/clinicalController');
+const cidController = require('../controllers/cidController');
 const { allowRoles, requireAuth, requireCsrf } = require('../middlewares/auth');
 const { audit } = require('../middlewares/audit');
 
@@ -23,5 +24,9 @@ router.post('/evolutions', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), contr
 
 router.get('/attachments', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.listAttachments);
 router.post('/attachments', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), controller.createAttachment);
+
+router.get('/cid10/search', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), cidController.search);
+router.get('/symptoms', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), cidController.listSymptoms);
+router.post('/cid10/suggestions', ...allowRoles('ADMIN', 'MEDICO', 'ENFERMAGEM'), cidController.suggestBySymptoms);
 
 module.exports = router;

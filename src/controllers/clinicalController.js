@@ -23,6 +23,7 @@ const anamnesisSchema = z.object({
   patientId: uuid,
   complaint: z.string().min(1).max(4000),
   currentHistory: z.string().min(1).max(10000),
+  symptomIds: z.array(uuid).max(40).optional().default([]),
   personalHistory: nullableText,
   surgicalHistory: nullableText,
   allergies: nullableText,
@@ -39,6 +40,7 @@ const consultationSchema = z.object({
   triageId: uuid.optional().nullable(),
   anamnesisId: uuid.optional().nullable(),
   status: z.enum(['EM_ANDAMENTO', 'FINALIZADA', 'RETORNO_SOLICITADO']).default('EM_ANDAMENTO'),
+  cid10Id: uuid.optional().nullable(),
   cid: nullableText,
   conduct: nullableText,
   returnGuidance: nullableText
@@ -130,8 +132,13 @@ async function listAnamneses(req, res, next) {
   try {
     const result = await db.query(
       `SELECT a.*, p.full_name AS patient_name
+              , COALESCE(json_agg(json_build_object('id', s.id, 'code', s.code, 'name', s.name) ORDER BY s.name)
+                FILTER (WHERE s.id IS NOT NULL), '[]') AS symptoms
          FROM clinical_anamneses a
          JOIN patients p ON p.id = a.patient_id
+         LEFT JOIN clinical_anamnesis_symptoms ans ON ans.anamnesis_id = a.id
+         LEFT JOIN symptoms s ON s.id = ans.symptom_id
+        GROUP BY a.id, p.full_name
         ORDER BY a.created_at DESC`
     );
     res.json({ anamneses: result.rows });
@@ -143,28 +150,41 @@ async function listAnamneses(req, res, next) {
 async function createAnamnesis(req, res, next) {
   try {
     const input = anamnesisSchema.parse(req.body);
-    const result = await db.query(
-      `INSERT INTO clinical_anamneses
-        (patient_id, complaint, current_history, personal_history, surgical_history,
-         allergies, medications, gyneco_history, family_history, habits, systems_review, physical_exam)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-       RETURNING *`,
-      [
-        input.patientId,
-        input.complaint,
-        input.currentHistory,
-        clean(input.personalHistory),
-        clean(input.surgicalHistory),
-        clean(input.allergies),
-        clean(input.medications),
-        clean(input.gynecoHistory),
-        clean(input.familyHistory),
-        clean(input.habits),
-        clean(input.systemsReview),
-        clean(input.physicalExam)
-      ]
-    );
-    res.status(201).json({ anamnesis: result.rows[0] });
+    const anamnesis = await db.transaction(async (client) => {
+      const result = await client.query(
+        `INSERT INTO clinical_anamneses
+          (patient_id, complaint, current_history, personal_history, surgical_history,
+           allergies, medications, gyneco_history, family_history, habits, systems_review, physical_exam)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         RETURNING *`,
+        [
+          input.patientId,
+          input.complaint,
+          input.currentHistory,
+          clean(input.personalHistory),
+          clean(input.surgicalHistory),
+          clean(input.allergies),
+          clean(input.medications),
+          clean(input.gynecoHistory),
+          clean(input.familyHistory),
+          clean(input.habits),
+          clean(input.systemsReview),
+          clean(input.physicalExam)
+        ]
+      );
+
+      for (const symptomId of input.symptomIds) {
+        await client.query(
+          `INSERT INTO clinical_anamnesis_symptoms (anamnesis_id, symptom_id)
+           VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [result.rows[0].id, symptomId]
+        );
+      }
+
+      return result.rows[0];
+    });
+    res.status(201).json({ anamnesis });
   } catch (error) {
     next(error);
   }
@@ -174,8 +194,10 @@ async function listConsultations(req, res, next) {
   try {
     const result = await db.query(
       `SELECT c.*, p.full_name AS patient_name
+              , cid.code AS cid_code, cid.description AS cid_description
          FROM clinical_consultations c
          JOIN patients p ON p.id = c.patient_id
+         LEFT JOIN cid10_codes cid ON cid.id = c.cid10_id
         ORDER BY c.created_at DESC`
     );
     res.json({ consultations: result.rows });
@@ -189,14 +211,15 @@ async function createConsultation(req, res, next) {
     const input = consultationSchema.parse(req.body);
     const result = await db.query(
       `INSERT INTO clinical_consultations
-        (patient_id, triage_id, anamnesis_id, status, cid, conduct, return_guidance)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (patient_id, triage_id, anamnesis_id, status, cid10_id, cid, conduct, return_guidance)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [
         input.patientId,
         clean(input.triageId),
         clean(input.anamnesisId),
         input.status,
+        clean(input.cid10Id),
         clean(input.cid),
         clean(input.conduct),
         clean(input.returnGuidance)

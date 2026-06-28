@@ -47,7 +47,7 @@ app.use(cors({
     return callback(new Error('Origem nao autorizada pelo CORS.'));
   }
 }));
-app.use(express.json({ limit: '256kb', strict: true }));
+app.use(express.json({ limit: '6mb', strict: true }));
 app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 app.use(attachSession);
 app.use('/api', (req, res, next) => {

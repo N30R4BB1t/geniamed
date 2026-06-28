@@ -45,6 +45,8 @@
         <button id="menuCapabilities" class="secondary" type="button">Capacidades</button>
         <button id="menuUsers" class="secondary" type="button">Usuarios</button>
         <button id="menuProtocols" class="secondary" type="button">Protocolos</button>
+        <button id="menuCid10" class="secondary" type="button">CID-10</button>
+        <button id="menuSymptoms" class="secondary" type="button">Sintomas</button>
         <button id="menuTracking" class="secondary" type="button">Simular trajeto</button>
         <button id="logoutButton" class="secondary" type="button">Sair</button>
       </aside>
@@ -256,6 +258,246 @@
             <tbody id="protocolsTable"></tbody>
           </table>
         </div>
+      </section>
+
+      <section id="cid10Section" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Consulta CID-10</h1>
+            <p class="hint">Importe CSV do DATASUS, pesquise codigos e habilite sugestoes por sintomas.</p>
+          </div>
+          <div id="cidStats" class="admin-stat-pill">Total: 0</div>
+        </div>
+
+        <div class="warning-note">
+          <strong>Aviso importante:</strong> sugestoes por sintomas apoiam a codificacao e a avaliacao profissional. Nao representam diagnostico definitivo.
+        </div>
+
+        <form id="cidImportForm" class="unit-form">
+          <label>
+            Tipo do arquivo
+            <select name="kind" required>
+              <option value="CAPITULO">Capitulo</option>
+              <option value="GRUPO">Grupo</option>
+              <option value="CATEGORIA">Categoria</option>
+              <option value="SUBCATEGORIA">Subcategoria</option>
+            </select>
+          </label>
+          <label class="wide">
+            Arquivo CSV
+            <input name="file" type="file" accept=".csv,text/csv" required>
+          </label>
+          <div class="form-actions">
+            <button>Importar CSV</button>
+          </div>
+          <p id="cidImportMessage" class="hint wide"></p>
+        </form>
+
+        <form id="cidSearchForm" class="patient-search">
+          <input name="query" placeholder="Digite codigo ou descricao. Ex.: J06.9, diabetes, hipertensao...">
+          <button>Pesquisar</button>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Codigo</th>
+                <th>Descricao</th>
+                <th>Descricao curta</th>
+                <th>Tipo</th>
+              </tr>
+            </thead>
+            <tbody id="cidResultsTable">
+              <tr><td colspan="4">Pesquise por um CID para comecar.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="symptomsSection" class="panel admin-section hidden">
+        <div class="section-title">
+          <div>
+            <h1>Base de sintomas e pontuacao</h1>
+            <p class="hint">Gerencie grupos, sintomas, palavras-chave e relacoes sintoma-CID.</p>
+          </div>
+        </div>
+
+        <section class="symptom-workflow">
+          <h2>Sequencia recomendada</h2>
+          <ol>
+            <li><strong>Grupo:</strong> crie categorias amplas, como Cardiovascular ou Respiratorio.</li>
+            <li><strong>Sintoma:</strong> cadastre o sintoma dentro do grupo e informe palavras-chave/sinonimos.</li>
+            <li><strong>Gerar candidatos:</strong> deixe o sistema cruzar palavras-chave com a CID-10 importada.</li>
+            <li><strong>Aprovar vinculos:</strong> revise candidatos e aprove apenas relacoes clinicamente coerentes.</li>
+            <li><strong>Regra de combinacao:</strong> crie bonus para conjuntos de sintomas que costumam apontar para um CID.</li>
+          </ol>
+        </section>
+
+        <div class="admin-subgrid">
+          <section class="admin-subpanel">
+            <div class="section-title">
+              <h2>Grupos de sintomas</h2>
+              <button id="newSymptomGroupButton" type="button">Novo grupo</button>
+            </div>
+            <form id="symptomGroupForm" class="unit-form compact-form">
+              <input type="hidden" name="id">
+              <label>Codigo <input name="code" required placeholder="CARDIOVASCULAR"></label>
+              <label>Nome <input name="name" required placeholder="Cardiovascular"></label>
+              <label class="wide">Descricao <input name="description"></label>
+              <label>Ordem <input name="sortOrder" type="number" value="0"></label>
+              <label class="check-row"><input name="active" type="checkbox" checked> Ativo</label>
+              <div class="form-actions">
+                <button>Salvar grupo</button>
+                <button id="cancelSymptomGroupButton" class="secondary" type="button">Cancelar</button>
+              </div>
+            </form>
+            <div class="table-wrap compact-table"><table><tbody id="symptomGroupsTable"></tbody></table></div>
+          </section>
+
+          <section class="admin-subpanel">
+            <div class="section-title">
+              <h2>Sintomas</h2>
+              <button id="newSymptomButton" type="button">Novo sintoma</button>
+            </div>
+            <form id="symptomForm" class="unit-form compact-form">
+              <input type="hidden" name="id">
+              <label>Grupo <select name="groupId" required></select></label>
+              <label>Codigo <input name="code" required placeholder="PALPITACAO"></label>
+              <label>Nome <input name="name" required placeholder="Palpitacao"></label>
+              <label class="wide">Palavras-chave <input name="keywords" placeholder="palpitacao, palpitações, taquicardia"></label>
+              <label>Ordem <input name="sortOrder" type="number" value="0"></label>
+              <label class="check-row"><input name="active" type="checkbox" checked> Ativo</label>
+              <div class="form-actions">
+                <button>Salvar sintoma</button>
+                <button id="cancelSymptomButton" class="secondary" type="button">Cancelar</button>
+              </div>
+            </form>
+            <div class="table-wrap compact-table"><table><tbody id="symptomsTable"></tbody></table></div>
+          </section>
+        </div>
+
+        <section class="admin-subpanel">
+          <div class="section-title">
+            <div>
+              <h2>Vinculos sintoma-CID</h2>
+              <p class="hint">Quanto maior o peso, mais forte a sugestao quando o sintoma for marcado.</p>
+            </div>
+            <button id="newSymptomCidLinkButton" type="button">Novo vinculo</button>
+          </div>
+          <form id="symptomCidLinkForm" class="unit-form">
+            <input type="hidden" name="id">
+            <label>Sintoma <select name="symptomId" required></select></label>
+            <label class="wide">Buscar CID <input name="cidSearch" placeholder="Digite codigo ou descricao"></label>
+            <label class="wide">CID selecionado <select name="cid10Id" required></select></label>
+            <label>Pontuacao <input name="score" type="number" min="1" max="100" value="10" required></label>
+            <label class="wide">Observacoes <input name="notes"></label>
+            <div class="form-actions">
+              <button>Salvar vinculo</button>
+              <button id="cancelSymptomCidLinkButton" class="secondary" type="button">Cancelar</button>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sintoma</th>
+                  <th>CID</th>
+                  <th>Pontuacao</th>
+                  <th>Observacoes</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="symptomCidLinksTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="admin-subpanel">
+          <div class="section-title">
+            <div>
+              <h2>Candidatos automaticos</h2>
+              <p class="hint">Gere sugestoes por palavras-chave e aprove apenas o que fizer sentido clinico.</p>
+            </div>
+            <button id="generateCandidatesButton" type="button">Gerar candidatos</button>
+          </div>
+          <p id="candidateMessage" class="hint"></p>
+          <form id="candidateFilterForm" class="candidate-filter">
+            <input name="search" placeholder="Buscar por sintoma, CID, descricao ou termo">
+            <select name="sort">
+              <option value="created_desc">Mais recentes</option>
+              <option value="symptom_asc">Sintoma A-Z</option>
+              <option value="symptom_desc">Sintoma Z-A</option>
+              <option value="cid_asc">CID A-Z</option>
+              <option value="cid_desc">CID Z-A</option>
+              <option value="score_desc">Maior pontuacao</option>
+              <option value="score_asc">Menor pontuacao</option>
+            </select>
+            <select name="pageSize">
+              <option value="10">10 por pagina</option>
+              <option value="20">20 por pagina</option>
+              <option value="30">30 por pagina</option>
+            </select>
+            <button>Filtrar</button>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sintoma</th>
+                  <th>CID sugerido</th>
+                  <th>Termos</th>
+                  <th>Peso</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="symptomCandidatesTable"></tbody>
+            </table>
+          </div>
+          <div class="pagination-bar">
+            <button id="candidatePrevButton" class="secondary" type="button">Anterior</button>
+            <span id="candidatePageInfo">Pagina 1 de 1</span>
+            <button id="candidateNextButton" class="secondary" type="button">Proxima</button>
+          </div>
+        </section>
+
+        <section class="admin-subpanel">
+          <div class="section-title">
+            <div>
+              <h2>Regras de combinacao</h2>
+              <p class="hint">Aplique bonus quando um conjunto de sintomas aparecer junto.</p>
+            </div>
+            <button id="newCombinationRuleButton" type="button">Nova regra</button>
+          </div>
+          <form id="combinationRuleForm" class="unit-form">
+            <input type="hidden" name="id">
+            <label>Nome <input name="name" required placeholder="Dor toracica + dispneia"></label>
+            <label class="wide">Sintomas da regra <select name="symptomIds" multiple required></select></label>
+            <label class="wide">Buscar CID <input name="cidSearch" placeholder="Digite codigo ou descricao"></label>
+            <label class="wide">CID selecionado <select name="cid10Id" required></select></label>
+            <label>Bonus <input name="scoreBonus" type="number" min="1" max="100" value="10" required></label>
+            <label class="wide">Observacoes <input name="notes"></label>
+            <label class="check-row"><input name="active" type="checkbox" checked> Ativa</label>
+            <div class="form-actions">
+              <button>Salvar regra</button>
+              <button id="cancelCombinationRuleButton" class="secondary" type="button">Cancelar</button>
+            </div>
+          </form>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Regra</th>
+                  <th>Sintomas</th>
+                  <th>CID</th>
+                  <th>Bonus</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="combinationRulesTable"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
       <section id="trackingSection" class="panel admin-section hidden">

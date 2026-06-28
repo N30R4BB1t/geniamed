@@ -9,11 +9,15 @@ const menuUnits = document.querySelector('#menuUnits');
 const menuCapabilities = document.querySelector('#menuCapabilities');
 const menuUsers = document.querySelector('#menuUsers');
 const menuProtocols = document.querySelector('#menuProtocols');
+const menuCid10 = document.querySelector('#menuCid10');
+const menuSymptoms = document.querySelector('#menuSymptoms');
 const menuTracking = document.querySelector('#menuTracking');
 const unitsSection = document.querySelector('#unitsSection');
 const capabilitiesSection = document.querySelector('#capabilitiesSection');
 const usersSection = document.querySelector('#usersSection');
 const protocolsSection = document.querySelector('#protocolsSection');
+const cid10Section = document.querySelector('#cid10Section');
+const symptomsSection = document.querySelector('#symptomsSection');
 const trackingSection = document.querySelector('#trackingSection');
 
 const unitForm = document.querySelector('#unitForm');
@@ -40,17 +44,52 @@ const trackingResult = document.querySelector('#trackingResult');
 const reloadTrackingButton = document.querySelector('#reloadTrackingButton');
 const sendNearUnitButton = document.querySelector('#sendNearUnitButton');
 const resetSimulationButton = document.querySelector('#resetSimulationButton');
+const cidImportForm = document.querySelector('#cidImportForm');
+const cidImportMessage = document.querySelector('#cidImportMessage');
+const cidSearchForm = document.querySelector('#cidSearchForm');
+const cidResultsTable = document.querySelector('#cidResultsTable');
+const cidStats = document.querySelector('#cidStats');
+const symptomGroupForm = document.querySelector('#symptomGroupForm');
+const symptomGroupsTable = document.querySelector('#symptomGroupsTable');
+const newSymptomGroupButton = document.querySelector('#newSymptomGroupButton');
+const cancelSymptomGroupButton = document.querySelector('#cancelSymptomGroupButton');
+const symptomForm = document.querySelector('#symptomForm');
+const symptomsTable = document.querySelector('#symptomsTable');
+const newSymptomButton = document.querySelector('#newSymptomButton');
+const cancelSymptomButton = document.querySelector('#cancelSymptomButton');
+const symptomCidLinkForm = document.querySelector('#symptomCidLinkForm');
+const symptomCidLinksTable = document.querySelector('#symptomCidLinksTable');
+const newSymptomCidLinkButton = document.querySelector('#newSymptomCidLinkButton');
+const cancelSymptomCidLinkButton = document.querySelector('#cancelSymptomCidLinkButton');
+const generateCandidatesButton = document.querySelector('#generateCandidatesButton');
+const candidateMessage = document.querySelector('#candidateMessage');
+const symptomCandidatesTable = document.querySelector('#symptomCandidatesTable');
+const candidateFilterForm = document.querySelector('#candidateFilterForm');
+const candidatePrevButton = document.querySelector('#candidatePrevButton');
+const candidateNextButton = document.querySelector('#candidateNextButton');
+const candidatePageInfo = document.querySelector('#candidatePageInfo');
+const combinationRuleForm = document.querySelector('#combinationRuleForm');
+const combinationRulesTable = document.querySelector('#combinationRulesTable');
+const newCombinationRuleButton = document.querySelector('#newCombinationRuleButton');
+const cancelCombinationRuleButton = document.querySelector('#cancelCombinationRuleButton');
 
 let units = [];
 let capabilities = [];
 let users = [];
 let protocols = [];
+let symptomGroups = [];
+let symptoms = [];
+let symptomCidLinks = [];
+let symptomCandidates = [];
+let candidatePagination = { page: 1, pageSize: 10, total: 0, totalPages: 1 };
+let combinationRules = [];
 let trackedOccurrences = [];
 let trackingMap;
 let trackingMarker;
 let trackingUnitMarker;
 let trackingLine;
 let adminUser = null;
+const symptomDialogs = setupSymptomModals();
 
 async function boot() {
   adminUser = await GeniamedAuth.start({ roles: ['ADMIN'] });
@@ -90,6 +129,14 @@ menuUnits.addEventListener('click', () => showSection('units'));
 menuCapabilities.addEventListener('click', () => showSection('capabilities'));
 menuUsers.addEventListener('click', () => showSection('users'));
 menuProtocols.addEventListener('click', () => showSection('protocols'));
+menuCid10.addEventListener('click', async () => {
+  showSection('cid10');
+  await loadCidStats();
+});
+menuSymptoms.addEventListener('click', async () => {
+  showSection('symptoms');
+  await loadSymptomAdminData();
+});
 menuTracking.addEventListener('click', async () => {
   showSection('tracking');
   await loadTrackedOccurrences();
@@ -153,6 +200,62 @@ protocolForm.addEventListener('submit', async (event) => {
   await loadProtocols();
 });
 
+symptomGroupForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = symptomGroupForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/symptom-groups/${id}` : '/api/admin/symptom-groups', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToSymptomGroup())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetSymptomGroupForm();
+  closeAdminDialog(symptomDialogs.group);
+  await loadSymptomAdminData();
+});
+
+symptomForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = symptomForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/symptoms/${id}` : '/api/admin/symptoms', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToSymptom())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetSymptomForm();
+  closeAdminDialog(symptomDialogs.symptom);
+  await loadSymptomAdminData();
+});
+
+symptomCidLinkForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = symptomCidLinkForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/symptom-cid-links/${id}` : '/api/admin/symptom-cid-links', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToSymptomCidLink())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetSymptomCidLinkForm();
+  closeAdminDialog(symptomDialogs.link);
+  await loadSymptomCidLinks();
+});
+
+combinationRuleForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = combinationRuleForm.elements.id.value;
+  const response = await fetch(id ? `/api/admin/symptom-combination-rules/${id}` : '/api/admin/symptom-combination-rules', {
+    method: id ? 'PUT' : 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(formToCombinationRule())
+  });
+  if (!(await handleSaveResponse(response))) return;
+  resetCombinationRuleForm();
+  closeAdminDialog(symptomDialogs.rule);
+  await loadCombinationRules();
+});
+
 newUnitButton.addEventListener('click', resetUnitForm);
 cancelUnitButton.addEventListener('click', resetUnitForm);
 newCapabilityButton.addEventListener('click', resetCapabilityForm);
@@ -161,7 +264,71 @@ newUserButton.addEventListener('click', resetUserForm);
 cancelUserButton.addEventListener('click', resetUserForm);
 newProtocolButton.addEventListener('click', resetProtocolForm);
 cancelProtocolButton.addEventListener('click', resetProtocolForm);
+newSymptomGroupButton.addEventListener('click', () => {
+  resetSymptomGroupForm();
+  openAdminDialog(symptomDialogs.group);
+});
+cancelSymptomGroupButton.addEventListener('click', () => {
+  resetSymptomGroupForm();
+  closeAdminDialog(symptomDialogs.group);
+});
+newSymptomButton.addEventListener('click', () => {
+  resetSymptomForm();
+  openAdminDialog(symptomDialogs.symptom);
+});
+cancelSymptomButton.addEventListener('click', () => {
+  resetSymptomForm();
+  closeAdminDialog(symptomDialogs.symptom);
+});
+newSymptomCidLinkButton.addEventListener('click', () => {
+  resetSymptomCidLinkForm();
+  openAdminDialog(symptomDialogs.link);
+});
+cancelSymptomCidLinkButton.addEventListener('click', () => {
+  resetSymptomCidLinkForm();
+  closeAdminDialog(symptomDialogs.link);
+});
+newCombinationRuleButton.addEventListener('click', () => {
+  resetCombinationRuleForm();
+  openAdminDialog(symptomDialogs.rule);
+});
+cancelCombinationRuleButton.addEventListener('click', () => {
+  resetCombinationRuleForm();
+  closeAdminDialog(symptomDialogs.rule);
+});
 reloadTrackingButton.addEventListener('click', loadTrackedOccurrences);
+
+symptomCidLinkForm.elements.cidSearch.addEventListener('input', debounce(searchCidForLink, 300));
+combinationRuleForm.elements.cidSearch.addEventListener('input', debounce(searchCidForCombinationRule, 300));
+generateCandidatesButton.addEventListener('click', generateSymptomCandidates);
+candidateFilterForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  candidatePagination.page = 1;
+  await loadSymptomCandidates();
+});
+candidateFilterForm.elements.search.addEventListener('input', debounce(async () => {
+  candidatePagination.page = 1;
+  await loadSymptomCandidates();
+}, 350));
+candidateFilterForm.elements.sort.addEventListener('change', async () => {
+  candidatePagination.page = 1;
+  await loadSymptomCandidates();
+});
+candidateFilterForm.elements.pageSize.addEventListener('change', async () => {
+  candidatePagination.page = 1;
+  candidatePagination.pageSize = Number(candidateFilterForm.elements.pageSize.value || 10);
+  await loadSymptomCandidates();
+});
+candidatePrevButton.addEventListener('click', async () => {
+  if (candidatePagination.page <= 1) return;
+  candidatePagination.page -= 1;
+  await loadSymptomCandidates();
+});
+candidateNextButton.addEventListener('click', async () => {
+  if (candidatePagination.page >= candidatePagination.totalPages) return;
+  candidatePagination.page += 1;
+  await loadSymptomCandidates();
+});
 
 trackingForm.elements.occurrenceId.addEventListener('change', selectTrackedOccurrence);
 trackingForm.elements.progress.addEventListener('input', updatePositionFromProgress);
@@ -176,12 +343,102 @@ sendNearUnitButton.addEventListener('click', () => {
 });
 resetSimulationButton.addEventListener('click', resetTrackingSimulation);
 
+cidImportForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const file = cidImportForm.elements.file.files[0];
+  if (!file) return;
+  cidImportMessage.textContent = 'Lendo arquivo...';
+  const csv = await readCsvFile(file);
+  cidImportMessage.textContent = 'Importando CID-10...';
+  const response = await fetch('/api/admin/cid10/import', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      kind: cidImportForm.elements.kind.value,
+      csv
+    })
+  });
+  if (!(await handleSaveResponse(response))) {
+    cidImportMessage.textContent = 'Nao foi possivel importar o arquivo.';
+    return;
+  }
+  const data = await response.json().catch(() => ({ imported: 0 }));
+  cidImportMessage.textContent = `${data.imported || 0} registros importados/atualizados.`;
+  cidImportForm.reset();
+  await loadCidStats();
+});
+
+cidSearchForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await searchCid10();
+});
+
 async function loadAll() {
   await loadUnits();
   await loadCapabilities();
   await loadUsers();
   await loadProtocols();
+  await loadSymptomAdminData();
   await loadTrackedOccurrences();
+  await loadCidStats();
+}
+
+function setupSymptomModals() {
+  return {
+    group: createAdminFormDialog(
+      symptomGroupForm,
+      'Grupo de sintomas',
+      'Use grupos para organizar sintomas por sistema ou contexto clinico. Exemplos: Cardiovascular, Respiratorio, Digestivo.'
+    ),
+    symptom: createAdminFormDialog(
+      symptomForm,
+      'Sintoma',
+      'Cadastre o nome que o profissional vera na anamnese. As palavras-chave devem incluir sinonimos e termos que aparecam na CID-10.'
+    ),
+    link: createAdminFormDialog(
+      symptomCidLinkForm,
+      'Vinculo sintoma-CID',
+      'Use quando a relacao sintoma-CID ja foi revisada. Pontuacoes maiores fazem o CID subir no ranking quando o sintoma for escolhido.'
+    ),
+    rule: createAdminFormDialog(
+      combinationRuleForm,
+      'Regra de combinacao',
+      'Use regras quando um conjunto de sintomas, e nao apenas um sintoma isolado, deve aumentar a pontuacao de um CID.'
+    )
+  };
+}
+
+function createAdminFormDialog(form, title, helpText) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'admin-form-dialog';
+
+  const header = document.createElement('div');
+  header.className = 'dialog-header';
+  const heading = document.createElement('h2');
+  heading.textContent = title;
+  const helpButton = document.createElement('button');
+  helpButton.className = 'help-icon';
+  helpButton.type = 'button';
+  helpButton.textContent = '?';
+  helpButton.title = 'Mostrar ajuda';
+  header.append(heading, helpButton);
+
+  const help = document.createElement('p');
+  help.className = 'modal-help hidden';
+  help.textContent = helpText;
+  helpButton.addEventListener('click', () => help.classList.toggle('hidden'));
+
+  dialog.append(header, help, form);
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
+function openAdminDialog(dialog) {
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeAdminDialog(dialog) {
+  if (dialog.open) dialog.close();
 }
 
 async function loadUnits() {
@@ -229,6 +486,112 @@ async function loadTrackedOccurrences() {
     )).join('')
     : '<option value="">Nenhuma ocorrencia ativa</option>';
   selectTrackedOccurrence();
+}
+
+async function loadSymptomAdminData() {
+  await loadSymptomGroups();
+  await loadSymptoms();
+  await loadSymptomCidLinks();
+  await loadSymptomCandidates();
+  await loadCombinationRules();
+  renderSymptomSelects();
+}
+
+async function loadSymptomGroups() {
+  const response = await fetch('/api/admin/symptom-groups', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  symptomGroups = data.groups || [];
+  renderSymptomGroupsTable();
+}
+
+async function loadSymptoms() {
+  const response = await fetch('/api/admin/symptoms', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  symptoms = data.symptoms || [];
+  renderSymptomsTable();
+}
+
+async function loadSymptomCidLinks() {
+  const response = await fetch('/api/admin/symptom-cid-links', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  symptomCidLinks = data.links || [];
+  renderSymptomCidLinksTable();
+}
+
+async function loadSymptomCandidates() {
+  const params = new URLSearchParams({
+    status: 'PENDENTE',
+    page: String(candidatePagination.page),
+    pageSize: String(candidatePagination.pageSize),
+    search: candidateFilterForm?.elements.search.value.trim() || '',
+    sort: candidateFilterForm?.elements.sort.value || 'created_desc'
+  });
+  const response = await fetch(`/api/admin/symptom-cid-candidates?${params}`, { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  symptomCandidates = data.candidates || [];
+  candidatePagination = {
+    page: data.page || 1,
+    pageSize: data.pageSize || candidatePagination.pageSize,
+    total: data.total || 0,
+    totalPages: data.totalPages || 1
+  };
+  renderSymptomCandidatesTable();
+  renderCandidatePagination();
+}
+
+async function loadCombinationRules() {
+  const response = await fetch('/api/admin/symptom-combination-rules', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  combinationRules = data.rules || [];
+  renderCombinationRulesTable();
+}
+
+async function loadCidStats() {
+  const response = await fetch('/api/admin/cid10/stats', { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  cidStats.innerHTML = `
+    <strong>Total:</strong> ${Number(data.total || 0)}<br>
+    <strong>Capitulos:</strong> ${Number(data.chapters || 0)}<br>
+    <strong>Grupos CID:</strong> ${Number(data.cid_groups || 0)}<br>
+    <strong>Categorias:</strong> ${Number(data.categories || 0)}<br>
+    <strong>Subcategorias:</strong> ${Number(data.subcategories || 0)}<br>
+    <strong>Grupos de sintomas:</strong> ${Number(data.groups || 0)}
+  `;
+}
+
+async function readCsvFile(file) {
+  const buffer = await file.arrayBuffer();
+  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+  if (!utf8.includes('\uFFFD')) return utf8;
+  return new TextDecoder('windows-1252').decode(buffer);
+}
+
+async function searchCid10() {
+  const query = cidSearchForm.elements.query.value.trim();
+  if (query.length < 2) {
+    cidResultsTable.innerHTML = '<tr><td colspan="4">Digite ao menos 2 caracteres.</td></tr>';
+    return;
+  }
+  const response = await fetch(`/api/clinical/cid10/search?q=${encodeURIComponent(query)}`, { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  const results = data.results || [];
+  cidResultsTable.innerHTML = results.length
+    ? results.map((item) => `
+      <tr>
+        <td><strong>${escapeHtml(item.code)}</strong></td>
+        <td>${escapeHtml(item.description)}</td>
+        <td>${escapeHtml(item.short_description || '-')}</td>
+        <td>${escapeHtml(item.kind)}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="4">Nenhum CID encontrado.</td></tr>';
 }
 
 function renderUnits() {
@@ -315,10 +678,125 @@ function renderProtocols() {
   `).join('');
 }
 
+function renderSymptomGroupsTable() {
+  if (symptomGroups.length === 0) {
+    symptomGroupsTable.innerHTML = '<tr><td>Nenhum grupo cadastrado.</td></tr>';
+    return;
+  }
+  symptomGroupsTable.innerHTML = symptomGroups.map((group) => `
+    <tr>
+      <td><strong>${escapeHtml(group.name)}</strong><div class="meta">${escapeHtml(group.code)} - ordem ${Number(group.sort_order || 0)}</div></td>
+      <td><span class="badge">${group.active ? 'Ativo' : 'Inativo'}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editSymptomGroup('${group.id}')">Editar</button>
+        <button type="button" onclick="deleteRecord('/api/admin/symptom-groups/${group.id}', loadSymptomAdminData)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderSymptomsTable() {
+  if (symptoms.length === 0) {
+    symptomsTable.innerHTML = '<tr><td>Nenhum sintoma cadastrado.</td></tr>';
+    return;
+  }
+  symptomsTable.innerHTML = symptoms.map((symptom) => `
+    <tr>
+      <td><strong>${escapeHtml(symptom.name)}</strong><div class="meta">${escapeHtml(symptom.group_name)} - ${escapeHtml(symptom.code)}</div></td>
+      <td>${escapeHtml((symptom.keywords || []).join(', '))}</td>
+      <td><span class="badge">${symptom.active ? 'Ativo' : 'Inativo'}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editSymptom('${symptom.id}')">Editar</button>
+        <button type="button" onclick="deleteRecord('/api/admin/symptoms/${symptom.id}', loadSymptomAdminData)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderSymptomCidLinksTable() {
+  if (symptomCidLinks.length === 0) {
+    symptomCidLinksTable.innerHTML = '<tr><td colspan="5">Nenhum vinculo sintoma-CID cadastrado.</td></tr>';
+    return;
+  }
+  symptomCidLinksTable.innerHTML = symptomCidLinks.map((link) => `
+    <tr>
+      <td>${escapeHtml(link.symptom_name)}</td>
+      <td><strong>${escapeHtml(link.cid_code)}</strong><div class="meta">${escapeHtml(link.cid_description)}</div></td>
+      <td><span class="badge">Peso ${Number(link.score || 0)}</span></td>
+      <td>${escapeHtml(link.notes || '-')}</td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editSymptomCidLink('${link.id}')">Editar</button>
+        <button type="button" onclick="deleteRecord('/api/admin/symptom-cid-links/${link.id}', loadSymptomCidLinks)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderSymptomCandidatesTable() {
+  if (symptomCandidates.length === 0) {
+    symptomCandidatesTable.innerHTML = '<tr><td colspan="5">Nenhum candidato pendente. Gere candidatos ou ajuste palavras-chave.</td></tr>';
+    return;
+  }
+  symptomCandidatesTable.innerHTML = symptomCandidates.map((item) => `
+    <tr>
+      <td>${escapeHtml(item.symptom_name)}</td>
+      <td><strong>${escapeHtml(item.cid_code)}</strong><div class="meta">${escapeHtml(item.cid_description)}</div></td>
+      <td>${escapeHtml((item.matched_keywords || []).join(', '))}</td>
+      <td><input class="score-input" id="candidateScore-${item.id}" type="number" min="1" max="100" value="${Number(item.suggested_score || 2)}"></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="reviewCandidate('${item.id}', true)">Aprovar</button>
+        <button type="button" onclick="reviewCandidate('${item.id}', false)">Rejeitar</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderCandidatePagination() {
+  candidatePageInfo.textContent = `Pagina ${candidatePagination.page} de ${candidatePagination.totalPages} - ${candidatePagination.total} candidato(s)`;
+  candidatePrevButton.disabled = candidatePagination.page <= 1;
+  candidateNextButton.disabled = candidatePagination.page >= candidatePagination.totalPages;
+}
+
+function renderCombinationRulesTable() {
+  if (combinationRules.length === 0) {
+    combinationRulesTable.innerHTML = '<tr><td colspan="5">Nenhuma regra cadastrada.</td></tr>';
+    return;
+  }
+  combinationRulesTable.innerHTML = combinationRules.map((rule) => `
+    <tr>
+      <td><strong>${escapeHtml(rule.name)}</strong><div class="meta">${rule.active ? 'Ativa' : 'Inativa'}</div></td>
+      <td>${escapeHtml((rule.symptoms || []).map((symptom) => symptom.name).join(', '))}</td>
+      <td><strong>${escapeHtml(rule.cid_code)}</strong><div class="meta">${escapeHtml(rule.cid_description)}</div></td>
+      <td><span class="badge">+${Number(rule.score_bonus || 0)}</span></td>
+      <td class="table-actions">
+        <button class="secondary" type="button" onclick="editCombinationRule('${rule.id}')">Editar</button>
+        <button type="button" onclick="deleteRecord('/api/admin/symptom-combination-rules/${rule.id}', loadCombinationRules)">Excluir</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
 function renderUnitSelect() {
   const select = capabilityForm.elements.unitId;
   select.innerHTML = units
     .map((unit) => `<option value="${unit.id}">${escapeHtml(unit.name)}</option>`)
+    .join('');
+}
+
+function renderSymptomSelects() {
+  const groupSelect = symptomForm.elements.groupId;
+  groupSelect.innerHTML = symptomGroups
+    .map((group) => `<option value="${group.id}">${escapeHtml(group.name)}</option>`)
+    .join('');
+
+  const symptomSelect = symptomCidLinkForm.elements.symptomId;
+  symptomSelect.innerHTML = symptoms
+    .map((symptom) => `<option value="${symptom.id}">${escapeHtml(symptom.name)} - ${escapeHtml(symptom.group_name)}</option>`)
+    .join('');
+
+  const ruleSymptomSelect = combinationRuleForm.elements.symptomIds;
+  ruleSymptomSelect.innerHTML = symptoms
+    .map((symptom) => `<option value="${symptom.id}">${escapeHtml(symptom.name)} - ${escapeHtml(symptom.group_name)}</option>`)
     .join('');
 }
 
@@ -374,6 +852,89 @@ function editProtocol(id) {
   protocolForm.elements.sortOrder.value = item.sort_order || 0;
   protocolForm.elements.instructions.value = item.instructions || '';
   protocolForm.elements.active.checked = item.active;
+}
+
+function editSymptomGroup(id) {
+  const group = symptomGroups.find((item) => item.id === id);
+  if (!group) return;
+  symptomGroupForm.elements.id.value = group.id;
+  symptomGroupForm.elements.code.value = group.code;
+  symptomGroupForm.elements.name.value = group.name;
+  symptomGroupForm.elements.description.value = group.description || '';
+  symptomGroupForm.elements.sortOrder.value = group.sort_order || 0;
+  symptomGroupForm.elements.active.checked = group.active;
+  openAdminDialog(symptomDialogs.group);
+}
+
+function editSymptom(id) {
+  const symptom = symptoms.find((item) => item.id === id);
+  if (!symptom) return;
+  symptomForm.elements.id.value = symptom.id;
+  symptomForm.elements.groupId.value = symptom.group_id;
+  symptomForm.elements.code.value = symptom.code;
+  symptomForm.elements.name.value = symptom.name;
+  symptomForm.elements.keywords.value = (symptom.keywords || []).join(', ');
+  symptomForm.elements.sortOrder.value = symptom.sort_order || 0;
+  symptomForm.elements.active.checked = symptom.active;
+  openAdminDialog(symptomDialogs.symptom);
+}
+
+function editSymptomCidLink(id) {
+  const link = symptomCidLinks.find((item) => item.id === id);
+  if (!link) return;
+  symptomCidLinkForm.elements.id.value = link.id;
+  symptomCidLinkForm.elements.symptomId.value = link.symptom_id;
+  symptomCidLinkForm.elements.score.value = link.score;
+  symptomCidLinkForm.elements.notes.value = link.notes || '';
+  symptomCidLinkForm.elements.cidSearch.value = `${link.cid_code} ${link.cid_description}`;
+  symptomCidLinkForm.elements.cid10Id.innerHTML = `<option value="${link.cid10_id}">${escapeHtml(link.cid_code)} - ${escapeHtml(link.cid_description)}</option>`;
+  symptomCidLinkForm.elements.cid10Id.value = link.cid10_id;
+  openAdminDialog(symptomDialogs.link);
+}
+
+function editCombinationRule(id) {
+  const rule = combinationRules.find((item) => item.id === id);
+  if (!rule) return;
+  combinationRuleForm.elements.id.value = rule.id;
+  combinationRuleForm.elements.name.value = rule.name;
+  Array.from(combinationRuleForm.elements.symptomIds.options).forEach((option) => {
+    option.selected = (rule.symptom_ids || []).includes(option.value);
+  });
+  combinationRuleForm.elements.scoreBonus.value = rule.score_bonus;
+  combinationRuleForm.elements.notes.value = rule.notes || '';
+  combinationRuleForm.elements.active.checked = rule.active;
+  combinationRuleForm.elements.cidSearch.value = `${rule.cid_code} ${rule.cid_description}`;
+  combinationRuleForm.elements.cid10Id.innerHTML = `<option value="${rule.cid10_id}">${escapeHtml(rule.cid_code)} - ${escapeHtml(rule.cid_description)}</option>`;
+  combinationRuleForm.elements.cid10Id.value = rule.cid10_id;
+  openAdminDialog(symptomDialogs.rule);
+}
+
+async function generateSymptomCandidates() {
+  candidateMessage.textContent = 'Gerando candidatos...';
+  const response = await fetch('/api/admin/symptom-cid-candidates/generate', {
+    method: 'POST',
+    headers: authHeaders()
+  });
+  if (!(await handleSaveResponse(response))) {
+    candidateMessage.textContent = 'Nao foi possivel gerar candidatos.';
+    return;
+  }
+  const data = await response.json().catch(() => ({ generated: 0 }));
+  candidateMessage.textContent = `${data.generated || 0} candidatos gerados ou atualizados.`;
+  candidatePagination.page = 1;
+  await loadSymptomCandidates();
+}
+
+async function reviewCandidate(id, approve) {
+  const score = Number(document.querySelector(`#candidateScore-${id}`)?.value || 2);
+  const response = await fetch(`/api/admin/symptom-cid-candidates/${id}/review`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ approve, score })
+  });
+  if (!(await handleSaveResponse(response))) return;
+  await loadSymptomCandidates();
+  await loadSymptomCidLinks();
 }
 
 async function toggleUnit(id) {
@@ -484,6 +1045,47 @@ function formToProtocol() {
   };
 }
 
+function formToSymptomGroup() {
+  return {
+    code: symptomGroupForm.elements.code.value.trim(),
+    name: symptomGroupForm.elements.name.value.trim(),
+    description: symptomGroupForm.elements.description.value.trim() || null,
+    sortOrder: Number(symptomGroupForm.elements.sortOrder.value || 0),
+    active: symptomGroupForm.elements.active.checked
+  };
+}
+
+function formToSymptom() {
+  return {
+    groupId: symptomForm.elements.groupId.value,
+    code: symptomForm.elements.code.value.trim(),
+    name: symptomForm.elements.name.value.trim(),
+    keywords: splitKeywords(symptomForm.elements.keywords.value),
+    sortOrder: Number(symptomForm.elements.sortOrder.value || 0),
+    active: symptomForm.elements.active.checked
+  };
+}
+
+function formToSymptomCidLink() {
+  return {
+    symptomId: symptomCidLinkForm.elements.symptomId.value,
+    cid10Id: symptomCidLinkForm.elements.cid10Id.value,
+    score: Number(symptomCidLinkForm.elements.score.value || 10),
+    notes: symptomCidLinkForm.elements.notes.value.trim() || null
+  };
+}
+
+function formToCombinationRule() {
+  return {
+    name: combinationRuleForm.elements.name.value.trim(),
+    symptomIds: Array.from(combinationRuleForm.elements.symptomIds.selectedOptions).map((option) => option.value),
+    cid10Id: combinationRuleForm.elements.cid10Id.value,
+    scoreBonus: Number(combinationRuleForm.elements.scoreBonus.value || 10),
+    notes: combinationRuleForm.elements.notes.value.trim() || null,
+    active: combinationRuleForm.elements.active.checked
+  };
+}
+
 function resetUnitForm() {
   unitForm.reset();
   unitForm.elements.id.value = '';
@@ -511,12 +1113,46 @@ function resetProtocolForm() {
   protocolForm.elements.active.checked = true;
 }
 
+function resetSymptomGroupForm() {
+  symptomGroupForm.reset();
+  symptomGroupForm.elements.id.value = '';
+  symptomGroupForm.elements.sortOrder.value = '0';
+  symptomGroupForm.elements.active.checked = true;
+}
+
+function resetSymptomForm() {
+  symptomForm.reset();
+  symptomForm.elements.id.value = '';
+  symptomForm.elements.sortOrder.value = '0';
+  symptomForm.elements.active.checked = true;
+  renderSymptomSelects();
+}
+
+function resetSymptomCidLinkForm() {
+  symptomCidLinkForm.reset();
+  symptomCidLinkForm.elements.id.value = '';
+  symptomCidLinkForm.elements.score.value = '10';
+  symptomCidLinkForm.elements.cid10Id.innerHTML = '<option value="">Busque um CID para selecionar</option>';
+  renderSymptomSelects();
+}
+
+function resetCombinationRuleForm() {
+  combinationRuleForm.reset();
+  combinationRuleForm.elements.id.value = '';
+  combinationRuleForm.elements.scoreBonus.value = '10';
+  combinationRuleForm.elements.active.checked = true;
+  combinationRuleForm.elements.cid10Id.innerHTML = '<option value="">Busque um CID para selecionar</option>';
+  renderSymptomSelects();
+}
+
 function showSection(section) {
   const sections = {
     units: unitsSection,
     capabilities: capabilitiesSection,
     users: usersSection,
     protocols: protocolsSection,
+    cid10: cid10Section,
+    symptoms: symptomsSection,
     tracking: trackingSection
   };
   const menus = {
@@ -524,6 +1160,8 @@ function showSection(section) {
     capabilities: menuCapabilities,
     users: menuUsers,
     protocols: menuProtocols,
+    cid10: menuCid10,
+    symptoms: menuSymptoms,
     tracking: menuTracking
   };
 
@@ -535,6 +1173,53 @@ function showSection(section) {
     element.classList.toggle('active-menu', key === section);
     element.classList.toggle('secondary', key !== section);
   });
+}
+
+async function searchCidForLink() {
+  const query = symptomCidLinkForm.elements.cidSearch.value.trim();
+  if (query.length < 2) {
+    symptomCidLinkForm.elements.cid10Id.innerHTML = '<option value="">Digite ao menos 2 caracteres</option>';
+    return;
+  }
+
+  const response = await fetch(`/api/clinical/cid10/search?q=${encodeURIComponent(query)}`, { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  const results = (data.results || []).filter((item) => ['CATEGORIA', 'SUBCATEGORIA'].includes(item.kind));
+  symptomCidLinkForm.elements.cid10Id.innerHTML = results.length
+    ? results.map((item) => `<option value="${item.id}">${escapeHtml(item.code)} - ${escapeHtml(item.description)}</option>`).join('')
+    : '<option value="">Nenhum CID encontrado</option>';
+}
+
+async function searchCidForCombinationRule() {
+  const query = combinationRuleForm.elements.cidSearch.value.trim();
+  if (query.length < 2) {
+    combinationRuleForm.elements.cid10Id.innerHTML = '<option value="">Digite ao menos 2 caracteres</option>';
+    return;
+  }
+
+  const response = await fetch(`/api/clinical/cid10/search?q=${encodeURIComponent(query)}`, { headers: authHeaders(false) });
+  if (!(await ensureAuthorized(response))) return;
+  const data = await response.json();
+  const results = (data.results || []).filter((item) => ['CATEGORIA', 'SUBCATEGORIA'].includes(item.kind));
+  combinationRuleForm.elements.cid10Id.innerHTML = results.length
+    ? results.map((item) => `<option value="${item.id}">${escapeHtml(item.code)} - ${escapeHtml(item.description)}</option>`).join('')
+    : '<option value="">Nenhum CID encontrado</option>';
+}
+
+function splitKeywords(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function debounce(callback, wait) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => callback(...args), wait);
+  };
 }
 
 function selectTrackedOccurrence() {
