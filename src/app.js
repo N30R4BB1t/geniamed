@@ -55,7 +55,15 @@ app.use('/api', (req, res, next) => {
   res.setHeader('Pragma', 'no-cache');
   next();
 });
+
+// Esta URL pertencia a um frontend legado que usava rotas incompatíveis
+// (por exemplo, /auth/login em vez de /api/auth/login).
+app.get('/index.html', (req, res) => {
+  res.redirect('/');
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public'), {
+  index: false,
   etag: true,
   maxAge: production ? '1h' : 0,
   setHeaders(res, filePath) {
@@ -89,8 +97,11 @@ function allowedOrigins() {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  const port = process.env.PORT || 3001;
   const renderUrl = process.env.RENDER_EXTERNAL_URL;
   return [...new Set([
+    `http://localhost:${port}`,
+    `http://127.0.0.1:${port}`,
     'http://localhost:3001',
     'http://127.0.0.1:3001',
     renderUrl,
