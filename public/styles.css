@@ -2,8 +2,10 @@
   --bg: #f5f7f9;
   --panel: #ffffff;
   --ink: #172026;
+  --text: var(--ink);
   --muted: #66717c;
   --line: #dfe5ea;
+  --border: var(--line);
   --accent: #0f766e;
   --danger: #b42318;
   --warn: #b54708;

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prontuário Médico</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Prontuário Médico</h1>
+      <p>Entre com seu usuário e senha para acessar pacientes e consultas.</p>
+    </header>
+
+    <main>
+      <section id="login-section" class="card">
+        <h2>Login</h2>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="admin@prontuario.com" />
+        </div>
+        <div class="form-group">
+          <label for="password">Senha</label>
+          <input id="password" type="password" placeholder="Admin@123" />
+        </div>
+        <button id="login-button">Entrar</button>
+        <p class="hint">Use <strong>admin@prontuario.com</strong> / <strong>Admin@123</strong> se o admin ainda não foi criado.</p>
+      </section>
+
+      <section id="dashboard-section" class="hidden">
+        <div class="dashboard-header">
+          <div>
+            <h2>Dashboard</h2>
+            <p id="welcome-text"></p>
+          </div>
+          <button id="logout-button" class="secondary">Sair</button>
+        </div>
+
+        <div class="search-bar card">
+          <input id="patient-search" type="text" placeholder="Buscar por nome ou CPF" />
+          <button id="search-button">Buscar</button>
+          <button id="load-all-button" class="secondary">Carregar todos</button>
+        </div>
+
+        <div class="content-grid">
+          <section class="card patient-list-panel">
+            <h3>Pacientes</h3>
+            <div id="patients-list" class="table-container">
+              <p class="empty-state">Nenhum paciente carregado ainda.</p>
+            </div>
+          </section>
+
+          <section class="card patient-details-panel">
+            <h3>Detalhes do paciente</h3>
+            <div id="patient-details" class="details"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Frontend estático integrado com o backend Express.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

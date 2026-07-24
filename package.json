@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "migrate": "node src/database/migrate.js"
+    "migrate": "node src/database/migrate.js",
+    "test:smoke": "node scripts/smoke-test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
